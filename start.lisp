@@ -81,20 +81,22 @@
              (set sum (+ sum (* (aref ,inp ,i-i) (aref ,wei wei-i))))
              (set wei-i (+ wei-i 1)))))))
 
-(defun create-neuron-kernel (kernel-name inputs outputs layer-vars input-vars all-layers)
-  (let ((float-vars (append (subseq layer-vars 0 4) input-vars))
-        (in-count (count-inputs inputs)))
-    (destructuring-bind (inp out wei off) (subseq layer-vars 0 4)
+(defun create-neuron-kernel (kernel-name inputs outputs layer input-vars all-layers is-mem)
+  (destructuring-bind (inp out wei off mem) (names layer 'inp 'out 'wei 'off 'mem)
+    (let ((float-vars (append (list inp out wei off)
+                              (when is-mem (list mem))
+                              input-vars))
+          (in-count (count-inputs inputs)))
       (flet ((to-form (name) `(,name float*))
              (do-inputs (in) (process-input-var in wei all-layers inp in-count)))
         `(defkernel ,kernel-name (void ,(mapcar #'to-form float-vars))
            (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;off out
-                 (wei-start (* ,in-count ,outputs block-idx-x)) ;wei
+                 (wei-start (* ,in-count ,(* (if is-mem 4 1) outputs) block-idx-x)) ;wei
                  (wei-i wei-start)
                  (sum 0.0))
              ,@(mapcar #'do-inputs inputs)
              (set sum (+ sum (aref ,off i)))
-             (set (aref ,out i) (tanh sum))))))))
+             (set (aref ,(if is-mem mem out) i) (tanh sum))))))))
 
 (defun create-storage-kernel (kernel-name layer)
   (destructuring-bind (mem out dat) (names layer 'mem 'out 'dat)
