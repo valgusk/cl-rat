@@ -144,13 +144,13 @@
 (defmacro with-neural-networks (name count layers &body body)
   (let* ((layers (add-var-names layers name))
          (allocation-list (allocate-net-memory count layers))
-         (action-list (create-net-actions count layers)))
+         (kernels-actions (create-net-actions count layers)))
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
               (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list)) 1024 1024)))
     (print `(with-memory-blocks ,allocation-list
-              ,@(mapcar #'car action-list)
-              (labels ,(mapcar #'cadr action-list)
+              ,@(mapcar #'first kernels-actions)
+              (labels ,(mapcar #'second kernels-actions)
                 ,@body)))))
 
 ;;main function
