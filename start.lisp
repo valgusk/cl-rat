@@ -59,8 +59,8 @@
 ;; layer kernel definition macro helpers
 (defun process-input-var (input-list wei all-layers def-name def-width)
   (destructuring-bind (name start end) input-list
-    (let* ((i-a (clean-gensym "i-a")) 
-           (i-z (clean-gensym "i-z")) 
+    (let* ((i-a (clean-gensym "i-a"))
+           (i-z (clean-gensym "i-z"))
            (i-i (clean-gensym "i-i"))
            (i-layer (find name all-layers :key #'car))
            (i-width (or (nth 2 i-layer) def-width))
