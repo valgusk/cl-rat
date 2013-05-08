@@ -16,9 +16,8 @@
   (funcall fun (format nil "~a-~a-~a" net-name layer-name suffix)))
 
 (defun assign-names (layer-name net-name)
-  (flet ((gen-name (suffix) (give-name net-name layer-name suffix)))
-    (append (mapcar #'gen-name '(inp- out- wei- off- mem- dat- ker- ker-2-))
-            (list (give-name net-name layer-name 'act #'intern)))))
+  (flet ((gen-name (suffix) (give-name net-name layer-name suffix #'intern)))
+    (mapcar #'gen-name '(inp out wei off mem dat ker ker-2 act))))
 
 (defun add-var-names (layers net-name)
   (flet ((add-vars (layer) (append layer `(,(assign-names (first layer) net-name)))))
