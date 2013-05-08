@@ -39,8 +39,8 @@
   (apply #'+ (mapcar #'(lambda (i) (- (third i) (second i))) inputs)))
 
 ;; memory allocation macro helpers
-(defun allocate-neuron (inputs outputs net-count layer-vars)
-  (destructuring-bind (inp out off wei) (subseq layer-vars 0 4)
+(defun allocate-neuron (inputs outputs net-count layer)
+  (destructuring-bind (inp out off wei) (names layer 'inp 'out 'off 'wei)
     `((,inp 'float ,(* net-count inputs))
       (,out 'float ,(* net-count outputs))
       (,off 'float ,(* net-count outputs))
