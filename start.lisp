@@ -22,7 +22,7 @@
 
 (defun assign-names (layer-name net-name)
   (flet ((gen-name (suffix) (give-name net-name layer-name suffix)))
-    (append (mapcar #'gen-name '(inp- out- wei- off- mem- ker-))
+    (append (mapcar #'gen-name '(inp- out- wei- off- mem- dat- ker- ker-2-))
             (list (give-name net-name layer-name 'act #'intern)))))
 
 (defun add-var-names (layers net-name)
