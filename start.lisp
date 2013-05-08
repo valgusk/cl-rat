@@ -147,8 +147,8 @@
          (kernels-actions (create-net-actions count layers)))
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
-              (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list)) 1024 1024)))
-    (print `(with-memory-blocks ,allocation-list
+              (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list))) 1024 1024))
+    (progn `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
               (labels (,@(mapcar #'second kernels-actions)
                        (,(read-from-string (format nil "run-~a" name)) ()
@@ -169,5 +169,3 @@
                            (F     ((E 0 96))                96)
                            (G     ((F 0 96))                96))
       (dotimes (i 10 T) (run-rat)))))
-
-(main)
