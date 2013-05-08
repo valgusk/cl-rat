@@ -113,21 +113,26 @@
   (flet ((needed (layer) (member (first layer) (mapcar #'first inputs))))
     (mapcar #'layer-out (remove-if-not #'needed layers))))
 
-(defun create-neuron-action (inputs outputs net-count layer-vars all-layers)
-  (destructuring-bind (kernel action) (subseq layer-vars 5 7)
+(defun create-action (inputs outputs net-count layer all-layers is-mem)
+  (destructuring-bind (inp out off wei mem dat ker ker-2 act)
+                      (names layer 'inp 'out 'off 'wei 'mem 'dat 'ker 'ker-2 'act)
     (let ((input-vars (get-inputs inputs all-layers)))
-    `(,(create-neuron-kernel kernel inputs outputs layer-vars input-vars all-layers)
-      (,action ()
-         (,kernel ,@(subseq layer-vars 0 4)
-                  ,@input-vars
-                  :grid-dim (list ,net-count 1 1)
-                  :block-dim (list ,outputs 1 1)))))))
+      `((progn ,(create-neuron-kernel ker inputs outputs layer input-vars all-layers is-mem)
+               ,@(when is-mem (create-storage-kernel ker-2 layer)))
+        (,act ()
+           (,ker ,inp ,out ,off ,wei
+                 ,@(when is-mem (list mem))
+                 ,@input-vars
+                 :grid-dim (list ,net-count 1 1)
+                 :block-dim (list ,(* (if is-mem 4 1) outputs) 1 1))
+           ,@(when is-mem
+               `((,ker-2 ,mem ,out ,dat
+                         :grid-dim (list ,net-count 1 1)
+                         :block-dim (list ,outputs 1 1)))))))))
 
 (defun create-layer-action (layer net-count all-layers)
-  (destructuring-bind (layer-name inputs outputs layer-vars) layer
-    (if (mem-p layer-name)
-      (create-neuron-action inputs outputs net-count layer-vars all-layers)
-      (create-neuron-action inputs outputs net-count layer-vars all-layers))))
+  (destructuring-bind (layer-name inputs outputs) (subseq layer 0 3)
+    (create-action inputs outputs net-count layer all-layers (mem-p layer-name))))
 
 (defun action-maker (net-count all-layers)
   #'(lambda (layer) (create-layer-action layer net-count all-layers)))
