@@ -152,12 +152,11 @@
 (defun cpu-layer-action (all-layers)
   #'(lambda (layer)
      (destructuring-bind (name inputs outputs) (subseq layer 0 3)
-       (let* ((input-vars (get-inputs inputs all-layers))
-              (mapping (mapcar #'null (mapcar #'first inputs))))
+       (let* ((input-vars (get-inputs inputs all-layers)))
           (mapcar #'(lambda (input-list)
                       (if (mem-p name)
-                        `(calculate-memory ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-                        `(calculate-neuron ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))
+                        `(calculate-memory ',inputs ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
+                        `(calculate-neuron ',inputs ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))
                   inputs)))))
 
 (defun create-validator (layers)
@@ -171,7 +170,7 @@
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
               (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list))) 1024 1024))
-    (progn `(with-memory-blocks ,allocation-list
+    (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
               (labels (,@(mapcar #'second kernels-actions)
                        (,(read-from-string (format nil "run-~a" name)) ()
