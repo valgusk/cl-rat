@@ -38,6 +38,8 @@
 (defun count-inputs (inputs)
   (apply #'+ (mapcar #'(lambda (i) (- (third i) (second i))) inputs)))
 
+(defun layer-out (layer) (car (names layer 'out)))
+
 ;; memory allocation macro helpers
 (defun allocate-neuron (inputs outputs net-count layer)
   (destructuring-bind (inp out off wei) (names layer 'inp 'out 'off 'wei)
@@ -53,9 +55,9 @@
                 (,dat 'float ,(* net-count outputs))) gate-layer))))
 
 (defun allocate-layer-memory (layer net-count)
-  (destructuring-bind (layer-name inputs outputs layer-var) layer
-      (apply (if (mem-p layer-name) #'allocate-memory #'allocate-neuron)
-             (list (count-inputs inputs) outputs net-count layer-var))))
+  (destructuring-bind (layer-name inputs outputs) (subseq layer 0 3)
+      (apply (if (mem-p layer-name) #'allocate-storage #'allocate-neuron)
+             (list (count-inputs inputs) outputs net-count layer))))
 
 (defun layer-maker (net-count)
   #'(lambda (layer) (allocate-layer-memory layer net-count)))
@@ -69,9 +71,9 @@
     (let* ((i-a (clean-gensym "i-a"))
            (i-z (clean-gensym "i-z"))
            (i-i (clean-gensym "i-i"))
-           (i-layer (find name all-layers :key #'car))
-           (i-width (or (nth 2 i-layer) def-width))
-           (inp (or (cadr (nth 3 i-layer)) def-name)))
+           (i-layer (find name all-layers :key #'first))
+           (i-width (or (third i-layer) def-width))
+           (inp (or (layer-out i-layer) def-name)))
       `(let ((,i-a (+ ,start (* ,i-width block-idx-x)))
              (,i-z (+ ,i-a ,(- end start))))
          (do ((,i-i ,i-a (+ ,i-i 1)))
