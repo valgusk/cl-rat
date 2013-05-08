@@ -110,8 +110,8 @@
 
 ;; layer function definition macro helpers
 (defun get-inputs (inputs layers)
-  (flet ((needed (layer) (member (car layer) (mapcar #'car inputs))))
-    (mapcar #'(lambda (layer) (cadr (nth 3 layer))) (remove-if-not #'needed layers))))
+  (flet ((needed (layer) (member (first layer) (mapcar #'first inputs))))
+    (mapcar #'layer-out (remove-if-not #'needed layers))))
 
 (defun create-neuron-action (inputs outputs net-count layer-vars all-layers)
   (destructuring-bind (kernel action) (subseq layer-vars 5 7)
