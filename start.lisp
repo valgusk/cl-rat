@@ -29,8 +29,8 @@
   (flet ((add-vars (layer) (append layer `(,(assign-names (first layer) net-name)))))
     (mapcar #'add-vars layers)))
 
-(defun count-inputs (inputs) 
-  (apply #'+ (mapcar #'(lambda (i) (- (caddr i) (cadr i))) inputs)))
+(defun count-inputs (inputs)
+  (apply #'+ (mapcar #'(lambda (i) (- (third i) (second i))) inputs)))
 
 ;; memory allocation macro helpers
 (defun allocate-neuron (inputs outputs net-count layer-vars)
