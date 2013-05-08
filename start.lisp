@@ -1,0 +1,145 @@
+(in-package :cl-user)
+(defpackage genetics
+  (:use :cl
+        :cl-cuda)
+  (:export :main))
+(in-package :genetics)
+
+
+
+;;structure preparation macro helpers
+(defgeneric get-count (l)
+  (:method ((l list)) (apply #'+ (mapcar #'get-count l)))
+  (:method ((n number)) n)
+  (:method (n) 0))
+
+(defun mem-p (layer-name) (equal (subseq (format nil "~3a" layer-name) 0 3) "MEM"))
+
+(defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
+
+(defun give-name (net-name layer-name suffix &optional (fun #'clean-gensym))
+  (funcall fun (format nil "~a-~a-~a" net-name layer-name suffix)))
+
+(defun assign-names (layer-name net-name)
+  (flet ((gen-name (suffix) (give-name net-name layer-name suffix)))
+    (append (mapcar #'gen-name '(inp- out- wei- off- mem- ker-))
+            (list (give-name net-name layer-name 'act #'intern)))))
+
+(defun add-var-names (layers net-name)
+  (flet ((add-vars (layer) (append layer `(,(assign-names (car layer) net-name)))))
+    (mapcar #'add-vars layers)))
+
+(defun count-inputs (inputs) 
+  (apply #'+ (mapcar #'(lambda (i) (- (caddr i) (cadr i))) inputs)))
+
+;; memory allocation macro helpers
+(defun allocate-neuron (inputs outputs net-count layer-vars)
+  (destructuring-bind (inp out off wei) (subseq layer-vars 0 4)
+    `((,inp 'float ,(* net-count inputs))
+      (,out 'float ,(* net-count outputs))
+      (,off 'float ,(* net-count outputs))
+      (,wei 'float ,(* net-count inputs outputs)))))
+
+(defun allocate-memory (inputs outputs net-count layer-vars)
+  (let ((gate-layer (allocate-neuron inputs (* 4 outputs) net-count layer-vars))
+        (mem (nth 4 layer-vars)))
+    (cons `(,mem 'float ,(* net-count outputs)) gate-layer)))
+
+(defun allocate-layer-memory (layer net-count)
+  (destructuring-bind (layer-name inputs outputs layer-var) layer
+      (apply (if (mem-p layer-name) #'allocate-memory #'allocate-neuron)
+             (list (count-inputs inputs) outputs net-count layer-var))))
+
+(defun layer-maker (net-count)
+  #'(lambda (layer) (allocate-layer-memory layer net-count)))
+
+(defun allocate-net-memory (count layers)
+  (mapcan (layer-maker count) layers))
+
+;; layer kernel definition macro helpers
+(defun process-input-var (input-list wei all-layers def-name def-width)
+  (destructuring-bind (name start end) input-list
+    (let* ((i-a (clean-gensym "i-a")) 
+           (i-z (clean-gensym "i-z")) 
+           (i-i (clean-gensym "i-i"))
+           (i-layer (find name all-layers :key #'car))
+           (i-width (or (nth 2 i-layer) def-width))
+           (inp (or (cadr (nth 3 i-layer)) def-name)))
+      `(let ((,i-a (+ ,start (* ,i-width block-idx-x)))
+             (,i-z (+ ,i-a ,(- end start))))
+         (do ((,i-i ,i-a (+ ,i-i 1)))
+             ((> ,i-i ,i-z))
+             (set sum (+ sum (* (aref ,inp ,i-i) (aref ,wei wei-i))))
+             (set wei-i (+ wei-i 1)))))))
+
+(defun create-neuron-kernel (kernel-name inputs outputs layer-vars input-vars all-layers)
+  (let ((float-vars (append (subseq layer-vars 0 4) input-vars))
+        (in-count (count-inputs inputs)))
+    (destructuring-bind (inp out wei off) (subseq layer-vars 0 4)
+      (flet ((to-form (name) `(,name float*))
+             (do-inputs (in) (process-input-var in wei all-layers inp in-count)))
+        `(defkernel ,kernel-name (void ,(mapcar #'to-form float-vars))
+           (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;off out
+                 (wei-start (* ,in-count ,outputs block-idx-x)) ;wei
+                 (wei-i wei-start)
+                 (sum 0.0))
+             ,@(mapcar #'do-inputs inputs)
+             (set sum (+ sum (aref ,off i)))
+             (set (aref ,out i) (tanh sum))))))))
+
+;; layer function definition macro helpers
+(defun get-inputs (inputs layers)
+  (flet ((needed (layer) (member (car layer) (mapcar #'car inputs))))
+    (mapcar #'(lambda (layer) (cadr (nth 3 layer))) (remove-if-not #'needed layers))))
+
+(defun create-neuron-action (inputs outputs net-count layer-vars all-layers)
+  (destructuring-bind (kernel action) (subseq layer-vars 5 7)
+    (let ((input-vars (get-inputs inputs all-layers)))
+    `(,(create-neuron-kernel kernel inputs outputs layer-vars input-vars all-layers)
+      (,action ()
+         (,kernel ,@(subseq layer-vars 0 4)
+                  ,@input-vars
+                  :grid-dim (list ,net-count 1 1)
+                  :block-dim (list ,outputs 1 1)))))))
+
+(defun create-layer-action (layer net-count all-layers)
+  (destructuring-bind (layer-name inputs outputs layer-vars) layer
+    (if (mem-p layer-name)
+      (create-neuron-action inputs outputs net-count layer-vars all-layers)
+      (create-neuron-action inputs outputs net-count layer-vars all-layers))))
+
+(defun action-maker (net-count all-layers)
+  #'(lambda (layer) (create-layer-action layer net-count all-layers)))
+
+(defun create-net-actions (count layers)
+  (mapcar (action-maker count layers) layers))
+
+;;neural network allocation and definition
+(defmacro with-neural-networks (name count layers &body body)
+  (let* ((layers (add-var-names layers name))
+         (allocation-list (allocate-net-memory count layers))
+         (action-list (create-net-actions count layers)))
+    (format t "~%The ~a will require ~a MB on host and device~%"
+              name
+              (/ (* 4.0 (get-count allocation-list)) 1024 1024))
+    (print `(with-memory-blocks ,allocation-list
+              ,@(mapcar #'car action-list)
+              (labels ,(mapcar #'cadr action-list)
+                ,@body)))))
+
+;;main function
+(defun main ()
+  (with-cuda-context (0)
+    (with-neural-networks rat
+                          4096
+                          ;name   inputs                outputs
+                          ((A     ((nil 0 64) (F 64 96))    96)
+                           (B     ((A 0 96))                96)
+                           (C     ((B 0 96))                96)
+                           (MEM-D ((C 0 96))                32)
+                           (E     ((C 0 96) (MEM-D 0 32))   96)
+                           (F     ((E 0 96))                96)
+                           (G     ((F 0 96))                96))
+      (dotimes (i 1000 T) (rat-e-act)))))
+
+(main)
