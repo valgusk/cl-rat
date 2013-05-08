@@ -141,6 +141,28 @@
 (defun create-net-actions (count layers)
   (mapcar (action-maker count layers) layers))
 
+
+;execution validation
+(defun calculate-neuron (mapping inp out off wei &rest additionals)
+  nil)
+
+(defun calculate-memory (mapping inp out off wei mem dat &rest additionals)
+  nil)
+
+(defun cpu-layer-action (all-layers)
+  #(lambda (layer)
+     (destructuring-bind (name inputs outputs) (subseq layer 0 3)
+       (let* ((input-vars (get-inputs inputs all-layers))
+              (mapping (mapcar #'null (mapcar #'first inputs))))
+          (mapcar #(lambda (input-list)
+                      (if (mem-p name)
+                        `(calculate-memory ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-list)
+                        `(calculate-neuron ,@(names layer 'inp 'out 'off 'wei ,@input-list))))
+                  inputs)))))
+
+(defun create-validator (layers)
+  (mapcar (cpu-layer-action layers) layers))
+
 ;;neural network allocation and definition
 (defmacro with-neural-networks (name count layers &body body)
   (let* ((layers (add-var-names layers name))
