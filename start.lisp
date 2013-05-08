@@ -31,9 +31,9 @@
 
 (defun names (layer &rest needed)
   (mapcar #'(lambda (need)
-              (nth (fourth layer)
-                   (position need '(inp out wei off mem dat ker ker-2 act))))
-          need))
+              (nth (position need '(inp out wei off mem dat ker ker-2 act))
+                   (fourth layer)))
+          needed))
 
 (defun count-inputs (inputs)
   (apply #'+ (mapcar #'(lambda (i) (- (third i) (second i))) inputs)))
