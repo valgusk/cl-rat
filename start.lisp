@@ -96,6 +96,21 @@
              (set sum (+ sum (aref ,off i)))
              (set (aref ,out i) (tanh sum))))))))
 
+(defun create-storage-kernel (kernel-name layer)
+  (destructuring-bind (mem out dat) (names layer 'mem 'out 'dat)
+    `((defkernel ,kernel-name (void ((,mem float*) (,out float*) (,dat float*)))
+         (let ((i (+ (* block-dim-x block-idx-x) (* 4 thread-idx-x)))
+               (o (+ (* block-dim-x block-idx-x) thread-idx-x))
+               (input (aref ,mem (+ i 1)))
+               (store (aref ,mem (+ i 2)))
+               (give (aref ,mem (+ i 3)))
+               (keep (aref ,mem (+ i 4)))
+               (prev (aref ,dat o))
+               (kept (* prev keep))
+               (resulting (+ (* input store) kept)))
+            (set (aref ,dat o) resulting)
+            (set (aref ,out o) (tanh (* give resulting))))))))
+
 ;; layer function definition macro helpers
 (defun get-inputs (inputs layers)
   (flet ((needed (layer) (member (car layer) (mapcar #'car inputs))))
