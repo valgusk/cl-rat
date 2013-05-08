@@ -150,7 +150,9 @@
               (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list)) 1024 1024)))
     (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
-              (labels ,(mapcar #'second kernels-actions)
+              (labels (,@(mapcar #'second kernels-actions)
+                       (,(read-from-string (format nil "run-~a" name)) ()
+                        ,@(mapcar #'(lambda (layer) (names layer 'act)) layers)))
                 ,@body)))))
 
 ;;main function
@@ -166,6 +168,6 @@
                            (E     ((C 0 96) (MEM-D 0 32))   96)
                            (F     ((E 0 96))                96)
                            (G     ((F 0 96))                96))
-      (dotimes (i 10 T) (rat-mem-d-act)))))
+      (dotimes (i 10 T) (run-rat)))))
 
 (main)
