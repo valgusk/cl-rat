@@ -8,11 +8,6 @@
 
 
 ;;structure preparation macro helpers
-(defgeneric get-count (l)
-  (:method ((l list)) (apply #'+ (mapcar #'get-count l)))
-  (:method ((n number)) n)
-  (:method (n) 0))
-
 (defun mem-p (layer-name) (equal (subseq (format nil "~3a" layer-name) 0 3) "MEM"))
 
 (defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
@@ -147,7 +142,7 @@
          (action-list (create-net-actions count layers)))
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
-              (/ (* 4.0 (get-count allocation-list)) 1024 1024))
+              (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list)) 1024 1024)))
     (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'car action-list)
               (labels ,(mapcar #'cadr action-list)
