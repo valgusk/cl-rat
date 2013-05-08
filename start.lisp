@@ -26,7 +26,7 @@
             (list (give-name net-name layer-name 'act #'intern)))))
 
 (defun add-var-names (layers net-name)
-  (flet ((add-vars (layer) (append layer `(,(assign-names (car layer) net-name)))))
+  (flet ((add-vars (layer) (append layer `(,(assign-names (first layer) net-name)))))
     (mapcar #'add-vars layers)))
 
 (defun count-inputs (inputs) 
