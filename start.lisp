@@ -46,10 +46,11 @@
       (,off 'float ,(* net-count outputs))
       (,wei 'float ,(* net-count inputs outputs)))))
 
-(defun allocate-memory (inputs outputs net-count layer-vars)
-  (let ((gate-layer (allocate-neuron inputs (* 4 outputs) net-count layer-vars))
-        (mem (nth 4 layer-vars)))
-    (cons `(,mem 'float ,(* net-count outputs)) gate-layer)))
+(defun allocate-storage (inputs outputs net-count layer)
+  (let ((gate-layer (allocate-neuron inputs outputs net-count layer)))
+    (destructuring-bind (mem dat) (names layer 'mem 'dat)
+      (append `((,mem 'float ,(* net-count 4 outputs))
+                (,dat 'float ,(* net-count outputs))) gate-layer))))
 
 (defun allocate-layer-memory (layer net-count)
   (destructuring-bind (layer-name inputs outputs layer-var) layer
