@@ -166,6 +166,6 @@
                            (E     ((C 0 96) (MEM-D 0 32))   96)
                            (F     ((E 0 96))                96)
                            (G     ((F 0 96))                96))
-      (dotimes (i 1000 T) (rat-e-act)))))
+      (dotimes (i 10 T) (rat-mem-d-act)))))
 
 (main)
