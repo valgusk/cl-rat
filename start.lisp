@@ -30,10 +30,10 @@
     (mapcar #'add-vars layers)))
 
 (defun names (layer &rest needed)
-  (let ((all '(inp out wei off mem dat ker ker-2 act)))
-    (mapcar #'second
-            (remove-if-not #(lambda (l) (member (first l) needed))
-                           (mapcar #'list all (fourth layer))))))
+  (mapcar #'(lambda (need)
+              (nth (fourth layer)
+                   (position need '(inp out wei off mem dat ker ker-2 act))))
+          need))
 
 (defun count-inputs (inputs)
   (apply #'+ (mapcar #'(lambda (i) (- (third i) (second i))) inputs)))
