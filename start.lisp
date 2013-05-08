@@ -157,7 +157,7 @@
           (mapcar #(lambda (input-list)
                       (if (mem-p name)
                         `(calculate-memory ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-list)
-                        `(calculate-neuron ,@(names layer 'inp 'out 'off 'wei ,@input-list))))
+                        `(calculate-neuron ,@(names layer 'inp 'out 'off 'wei) ,@input-list)))
                   inputs)))))
 
 (defun create-validator (layers)
