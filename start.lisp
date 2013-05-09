@@ -232,12 +232,12 @@
      #'(lambda (layer)
          (destructuring-bind (inp out wei off dat mem) (names layer 'inp 'out 'wei 'off 'dat 'mem)
            `((init-fill ,inp)
-             (init-fill ,out)
+             (init-fill ,out #'(lambda () 0.0))
              (init-fill ,wei)
              (init-fill ,off #'(lambda () 1.0))
              ,@(when (mem-p (first layer))
-                 `((init-fill ,mem)
-                   (init-fill ,dat))))))
+                 `((init-fill ,mem #'(lambda () 0.0))
+                   (init-fill ,dat #'(lambda () 0.0)))))))
      layers))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
