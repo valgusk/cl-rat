@@ -121,7 +121,7 @@
       `((progn ,(create-neuron-kernel ker inputs outputs layer input-vars all-layers is-mem)
                ,@(when is-mem (create-storage-kernel ker-2 layer)))
         (,act ()
-           (,ker ,inp ,out ,off ,wei
+           (,ker ,inp ,out ,wei ,off
                  ,@(when is-mem (list mem))
                  ,@input-vars
                  :grid-dim (list ,net-count 1 1)
