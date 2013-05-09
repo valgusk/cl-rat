@@ -12,7 +12,7 @@
 ;;structure preparation macro helpers
 (defun mem-p (layer-name) (equal (subseq (format nil "~3a" layer-name) 0 3) "MEM"))
 
-(defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
+(defun clean-gensym (a) (intern (symbol-name (gensym a))))
 
 (defun give-name (net-name layer-name suffix &optional (fun #'clean-gensym))
   (funcall fun (format nil "~a-~a-~a" net-name layer-name suffix)))
@@ -144,14 +144,14 @@
 
 ;execution validation
 (defun calculate-neuron (count mapping action inp out off wei &rest additionals)
-  (labels ((map-inputs (m &optional (i 0))
+  (labels ((map-inputs (id m &optional (i 0))
               (when m
                 (destructuring-bind (siz name start end) (car m)
                   (append (loop for n from start below end
                                     collect (mem-aref (if name (nth i additionals) inp)
-                                                      n))
-                              (map-inputs (cdr m) (if name (+ 1 i) i)))))))
-    (print (map-inputs mapping))))
+                                                      (+ (* siz id) n)))
+                              (map-inputs id (cdr m) (if name (+ 1 i) i)))))))
+    (print (map-inputs 10 mapping))))
 
 (defun calculate-memory (count mapping action inp out off wei mem dat &rest additionals)
   nil)
@@ -183,7 +183,7 @@
     (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
               (labels (,@(mapcar #'second kernels-actions)
-                       (,(read-from-string (format nil "run-~a" name)) ()
+                       (,(intern (format nil "run-~a" name)) ()
                         ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        (validate ()
                          ,@(create-validator layers)))
