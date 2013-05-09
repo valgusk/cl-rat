@@ -187,11 +187,34 @@
           (if (mem-p name)
             `(calculate-memory ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(print (validate-neuron ,5 ,outputs ',mapping #',@(names layer 'act)
+            `(print (validate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))))))
 
 (defun create-validator (layers count)
   (mapcar (cpu-layer-action layers count) layers))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;      neural network data initialization    ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun init-fill (memory-block &optional (fun #'(lambda () (1- (random 2.0)))))
+  (loop for n from 0 below (cl-cuda::memory-block-cuda-length memory-block) do
+    (setf (mem-aref memory-block n) (funcall fun)))
+  (memcpy-host-to-device memory-block))
+
+(defun add-initialization (layers)
+  (mapcan #'(lambda (layer)
+              (cons `(init-fill ,@(names layer 'out) (lambda () 0.0))
+                    (mapcar #'(lambda (var) `(init-fill ,var))
+                            (append (names layer 'inp 'wei 'off )
+                                    (when (mem-p (first layer))
+                                      (names layer 'dat 'mem))))))
+          layers))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;      neural network definition macro       ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;;neural network allocation and definition
 (defmacro with-neural-networks (name count layers &body body)
@@ -203,17 +226,13 @@
               (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list))) 1024 1024))
     (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
+              ,@(add-initialization layers)
               (labels (,@(mapcar #'second kernels-actions)
                        (,(intern (format nil "run-~a" name)) ()
                         ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        (validate ()
                          ,@(create-validator layers count)))
                 ,@body)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;     neural netwwork data manipulation      ;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -223,7 +242,7 @@
 (defun main ()
   (with-cuda-context (0)
     (with-neural-networks rat
-                          4096
+                          1
                           ;name   inputs                outputs
                           ((A     ((nil 0 64) (F 64 96))    96)
                            (B     ((A 0 96))                96)
