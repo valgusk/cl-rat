@@ -158,10 +158,11 @@
     (loop for id from 0 below net-count collect
       (let* ((inputs (map-inputs id mapping)))
         (loop for n from 0 below count collect
-          (tanh (summarize inputs (* id count (list-length inputs)) 0)))))))
+          (tanh (+ (mem-aref off (+ (* id count) n))
+                   (summarize inputs (* id count (list-length inputs)) 0))))))))
 
 (defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
-  nil)
+  (list net-count count mapping action inp out off wei mem dat additionals))
 
 (defun cpu-layer-action (all-layers count)
   #'(lambda (layer)
