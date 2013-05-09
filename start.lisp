@@ -182,8 +182,25 @@
       (memcpy-device-to-host out)
       (test out cpu-results)))
 
-(defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
-  (list net-count count mapping action inp out off wei mem dat additionals))
+(defun validate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
+  (let* ((gate-results (calculate-neuron net-count (* 4 count) mapping inp off wei additionals))
+         (cpu-results
+           (loop for n from 0 below (* net-count 4 count) by 4 collect
+             (destructuring-bind (input store give keep last)
+               (list (nth n gate-results)
+                     (round (/ (+ 1.0 (nth (+ 1 n) gate-results)) 2.0))
+                     (round (/ (+ 1.0 (nth (+ 2 n) gate-results)) 2.0))
+                     (round (/ (+ 1.0 (nth (+ 3 n) gate-results)) 2.0))
+                     (mem-aref dat (/ n 4)))
+                (tanh (* give (+ (* keep last) (* store input))))))))
+    (funcall action)
+    (memcpy-device-to-host out)
+    (memcpy-device-to-host mem)
+    (print 'memory-gates)
+    (print (test mem gate-results))
+    (print 'memory-outputs)
+    (print (test out cpu-results))))
+
 
 (defun cpu-layer-action (all-layers count)
   #'(lambda (layer)
