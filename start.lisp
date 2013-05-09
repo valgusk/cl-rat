@@ -143,7 +143,7 @@
 
 
 ;execution validation
-(defun calculate-neuron (net-count count mapping action inp out off wei &rest additionals)
+(defun calculate-neuron (net-count count mapping action inp off wei additionals)
   (labels ((map-inputs (id m &optional (i 0))
               (when m
                 (destructuring-bind (siz name start end) (car m)
@@ -155,11 +155,23 @@
               (if inputs
                 (summarize (cdr inputs) (1+ i) (+ sum (* (car inputs) (mem-aref wei i))))
                 0)))
-    (loop for id from 0 below net-count collect
+    (loop for id from 0 below net-count append
       (let* ((inputs (map-inputs id mapping)))
         (loop for n from 0 below count collect
           (tanh (+ (mem-aref off (+ (* id count) n))
                    (summarize inputs (* id count (list-length inputs)) 0))))))))
+
+(defun validate-neuron (net-count count mapping action inp out off wei &rest additionals)
+  (let ((cpu-results (calculate-neuron net-count count mapping action inp off wei additionals)))
+    (labels ((test (results &optional (i 0) (diffs nil))
+               (if results
+                   (test (cdr results)
+                         (1+ i)
+                         (cons (- (mem-aref out i) (car results)) diffs))
+                   diffs)))
+      (funcall action)
+      (print (list-length cpu-results))
+      (test cpu-results))))
 
 (defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
   (list net-count count mapping action inp out off wei mem dat additionals))
@@ -174,7 +186,7 @@
           (if (mem-p name)
             `(calculate-memory ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(print (calculate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
+            `(print (validate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))))))
 
 (defun create-validator (layers count)
