@@ -77,7 +77,7 @@
              (set sum (+ sum (* (aref ,inp ,i-i) (aref ,wei wei-i))))
              (set wei-i (+ wei-i 1)))))))
 
-(defun create-neuron-kernel (kernel-name inputs outputs layer input-vars all-layers is-mem)
+(defun create-neuron-kernel (kernel-name inputs layer input-vars all-layers is-mem)
   (destructuring-bind (inp out wei off mem) (names layer 'inp 'out 'wei 'off 'mem)
     (let ((float-vars (append (list inp out wei off)
                               (when is-mem (list mem))
@@ -87,7 +87,7 @@
              (do-inputs (in) (process-input-var in wei all-layers inp in-count)))
         `(defkernel ,kernel-name (void ,(mapcar #'to-form float-vars))
            (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;off out
-                 (wei-start (* ,in-count ,(* (if is-mem 4 1) outputs) block-idx-x)) ;wei
+                 (wei-start (* ,in-count (+ (* block-dim-x block-idx-x) thread-idx-x))) ;wei
                  (wei-i wei-start)
                  (sum 0.0))
              ,@(mapcar #'do-inputs inputs)
@@ -118,7 +118,7 @@
   (destructuring-bind (inp out off wei mem dat ker ker-2 act)
                       (names layer 'inp 'out 'off 'wei 'mem 'dat 'ker 'ker-2 'act)
     (let ((input-vars (get-inputs inputs all-layers)))
-      `((progn ,(create-neuron-kernel ker inputs outputs layer input-vars all-layers is-mem)
+      `((progn ,(create-neuron-kernel ker inputs layer input-vars all-layers is-mem)
                ,@(when is-mem (create-storage-kernel ker-2 layer)))
         (,act ()
            (,ker ,inp ,out ,wei ,off
@@ -161,7 +161,7 @@
       (let ((inputs (map-inputs id mapping)))
         (loop for n from 0 below count collect
           (tanh (+ (mem-aref off (+ (* id count) n))
-                   (summarize inputs (* id count (list-length inputs)) 0))))))))
+                   (summarize inputs (* (+ (* id count) n) (list-length inputs)) 0))))))))
 
 (defun validate-neuron (net-count count mapping action inp out off wei &rest additionals)
   (let ((cpu-results (calculate-neuron net-count count mapping inp off wei additionals)))
