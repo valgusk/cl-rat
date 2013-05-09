@@ -156,7 +156,7 @@
 (defun calculate-memory (count mapping action inp out off wei mem dat &rest additionals)
   nil)
 
-(defun cpu-layer-action (all-layers)
+(defun cpu-layer-action (all-layers count)
   #'(lambda (layer)
      (destructuring-bind (name inputs outputs) (subseq layer 0 3)
        (let* ((input-vars (get-inputs inputs all-layers))
@@ -164,13 +164,13 @@
                                    (cons (third (find (or (first i) name) all-layers :key #'first)) i))
                                inputs)))
           (if (mem-p name)
-            `(calculate-memory ,outputs ',mapping #',@(names layer 'act)
+            `(calculate-memory ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(calculate-neuron ,outputs ',mapping #',@(names layer 'act)
-                ,@(names layer 'inp 'out 'off 'wei) ,@input-vars))))))
+            `(print (calculate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
+                ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))))))
 
-(defun create-validator (layers)
-  (mapcar (cpu-layer-action layers) layers))
+(defun create-validator (layers count)
+  (mapcar (cpu-layer-action layers count) layers))
 
 ;;neural network allocation and definition
 (defmacro with-neural-networks (name count layers &body body)
@@ -186,7 +186,7 @@
                        (,(intern (format nil "run-~a" name)) ()
                         ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        (validate ()
-                         ,@(create-validator layers)))
+                         ,@(create-validator layers count)))
                 ,@body)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
