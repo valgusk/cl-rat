@@ -156,9 +156,9 @@
            (summarize (inputs i sum)
               (if inputs
                 (summarize (cdr inputs) (1+ i) (+ sum (* (car inputs) (mem-aref wei i))))
-                0)))
+                sum)))
     (loop for id from 0 below net-count append
-      (let* ((inputs (map-inputs id mapping)))
+      (let ((inputs (map-inputs id mapping)))
         (loop for n from 0 below count collect
           (tanh (+ (mem-aref off (+ (* id count) n))
                    (summarize inputs (* id count (list-length inputs)) 0))))))))
@@ -205,13 +205,17 @@
   (memcpy-host-to-device memory-block))
 
 (defun add-initialization (layers)
-  (mapcan #'(lambda (layer)
-              (cons `(init-fill ,@(names layer 'out) (lambda () 0.0))
-                    (mapcar #'(lambda (var) `(init-fill ,var))
-                            (append (names layer 'inp 'wei 'off )
-                                    (when (mem-p (first layer))
-                                      (names layer 'dat 'mem))))))
-          layers))
+  (mapcan
+     #'(lambda (layer)
+         (destructuring-bind (inp out wei off dat mem) (names layer 'inp 'out 'wei 'off 'dat 'mem)
+           `((init-fill ,inp)
+             (init-fill ,out)
+             (init-fill ,wei)
+             (init-fill ,off #'(lambda () 1.0))
+             ,@(when (mem-p (first layer))
+                 `((init-fill ,mem)
+                   (init-fill ,dat))))))
+     layers))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;      neural network definition macro       ;;;;;;;;;;;;;;;;;;;
