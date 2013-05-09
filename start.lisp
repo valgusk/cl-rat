@@ -143,17 +143,24 @@
 
 
 ;execution validation
-(defun calculate-neuron (count mapping action inp out off wei &rest additionals)
+(defun calculate-neuron (net-count count mapping action inp out off wei &rest additionals)
   (labels ((map-inputs (id m &optional (i 0))
               (when m
                 (destructuring-bind (siz name start end) (car m)
                   (append (loop for n from start below end
                                     collect (mem-aref (if name (nth i additionals) inp)
                                                       (+ (* siz id) n)))
-                              (map-inputs id (cdr m) (if name (+ 1 i) i)))))))
-    (print (map-inputs 10 mapping))))
+                              (map-inputs id (cdr m) (if name (+ 1 i) i))))))
+           (summarize (inputs i sum)
+              (if inputs
+                (summarize (cdr inputs) (1+ i) (+ sum (* (car inputs) (mem-aref wei i))))
+                0)))
+    (let* ((id 10)
+           (inputs (map-inputs id mapping)))
+      (loop for n from 0 below count collect
+        (summarize inputs (* id count (list-length inputs)) 0)))))
 
-(defun calculate-memory (count mapping action inp out off wei mem dat &rest additionals)
+(defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
   nil)
 
 (defun cpu-layer-action (all-layers count)
