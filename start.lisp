@@ -143,10 +143,10 @@
 
 
 ;execution validation
-(defun calculate-neuron (count mapping inp out off wei &rest additionals)
+(defun calculate-neuron (count mapping action inp out off wei &rest additionals)
   nil)
 
-(defun calculate-memory (count mapping inp out off wei mem dat &rest additionals)
+(defun calculate-memory (count mapping action inp out off wei mem dat &rest additionals)
   nil)
 
 (defun cpu-layer-action (all-layers)
@@ -157,9 +157,9 @@
                                    (cons (third (find (first i) all-layers :key #'first)) i))
                                inputs)))
           (if (mem-p name)
-            `(calculate-memory ,outputs ',mapping
+            `(calculate-memory ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(calculate-neuron ,outputs ',mapping
+            `(calculate-neuron ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei) ,@input-vars))))))
 
 (defun create-validator (layers)
