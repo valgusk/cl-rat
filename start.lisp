@@ -12,13 +12,13 @@
 ;;structure preparation macro helpers
 (defun mem-p (layer-name) (equal (subseq (format nil "~3a" layer-name) 0 3) "MEM"))
 
-(defun clean-gensym (a) (intern (symbol-name (gensym a))))
+(defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
 
 (defun give-name (net-name layer-name suffix &optional (fun #'clean-gensym))
   (funcall fun (format nil "~a-~a-~a" net-name layer-name suffix)))
 
 (defun assign-names (layer-name net-name)
-  (flet ((gen-name (suffix) (give-name net-name layer-name suffix #'intern)))
+  (flet ((gen-name (suffix) (give-name net-name layer-name suffix #'read-from-string)))
     (mapcar #'gen-name '(inp out wei off mem dat ker ker-2 act))))
 
 (defun add-var-names (layers net-name)
@@ -234,7 +234,7 @@
               ,@(mapcar #'first kernels-actions)
               ,@(add-initialization layers)
               (labels (,@(mapcar #'second kernels-actions)
-                       (,(intern (format nil "run-~a" name)) ()
+                       (,(read-from-string (format nil "run-~a" name)) ()
                         ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        (validate ()
                          ,@(create-validator layers count)))
