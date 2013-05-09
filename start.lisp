@@ -155,10 +155,10 @@
               (if inputs
                 (summarize (cdr inputs) (1+ i) (+ sum (* (car inputs) (mem-aref wei i))))
                 0)))
-    (let* ((id 10)
-           (inputs (map-inputs id mapping)))
-      (loop for n from 0 below count collect
-        (summarize inputs (* id count (list-length inputs)) 0)))))
+    (loop for id from 0 below net-count collect
+      (let* ((inputs (map-inputs id mapping)))
+        (loop for n from 0 below count collect
+          (tanh (summarize inputs (* id count (list-length inputs)) 0)))))))
 
 (defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
   nil)
