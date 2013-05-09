@@ -246,7 +246,7 @@
     (with-neural-networks rat
                           1
                           ;name   inputs                outputs
-                          ((A     ((nil 0 64) (F 64 96))    96)
+                          ((A     ((nil 0 64) (G 64 96))    96)
                            (B     ((A 0 96))                96)
                            (C     ((B 0 96))                96)
                            (MEM-D ((C 0 96))                32)
