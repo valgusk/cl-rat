@@ -5,6 +5,10 @@
   (:export :main))
 (in-package :genetics)
 
+
+
+(setf (getf cl-cuda::+built-in-functions+ 'tanh) '(((float) float nil "tanh")))
+(setf (getf cl-cuda::+built-in-functions+ 'nearbyintf) '(((float) float nil "nearbyintf")))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;    neural network definition   ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
