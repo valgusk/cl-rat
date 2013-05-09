@@ -170,6 +170,7 @@
                          (cons (- (mem-aref out i) (car results)) diffs))
                    diffs)))
       (funcall action)
+      (memcpy-device-to-host out)
       (print (list-length cpu-results))
       (test cpu-results))))
 
@@ -186,7 +187,7 @@
           (if (mem-p name)
             `(calculate-memory ,count ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(print (validate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
+            `(print (validate-neuron ,5 ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))))))
 
 (defun create-validator (layers count)
