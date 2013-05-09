@@ -210,9 +210,9 @@
                                    (cons (third (find (or (first i) name) all-layers :key #'first)) i))
                                inputs)))
           (if (mem-p name)
-            `(calculate-memory ,count ,outputs ',mapping #',@(names layer 'act)
+            `(validate-memory ,(min 1 count) ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei 'mem 'dat) ,@input-vars)
-            `(print (validate-neuron ,count ,outputs ',mapping #',@(names layer 'act)
+            `(print (validate-neuron ,(min 1 count) ,outputs ',mapping #',@(names layer 'act)
                 ,@(names layer 'inp 'out 'off 'wei) ,@input-vars)))))))
 
 (defun create-validator (layers count)
