@@ -145,6 +145,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;    neural network execution validation   ;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun test (out results &optional (i 0) (diffs nil))
+   (if results
+       (test out
+             (cdr results)
+             (1+ i)
+             (cons (list (mem-aref out i) (car results)) diffs))
+       diffs))
+
 (defun calculate-neuron (net-count count mapping inp off wei additionals)
   (labels ((map-inputs (id m &optional (i 0))
               (when m
@@ -165,16 +173,9 @@
 
 (defun validate-neuron (net-count count mapping action inp out off wei &rest additionals)
   (let ((cpu-results (calculate-neuron net-count count mapping inp off wei additionals)))
-    (labels ((test (results &optional (i 0) (diffs nil))
-               (if results
-                   (test (cdr results)
-                         (1+ i)
-                         (cons (list (mem-aref out i) (car results)) diffs))
-                   diffs)))
       (funcall action)
       (memcpy-device-to-host out)
-      (print (list-length cpu-results))
-      (test cpu-results))))
+      (test out cpu-results)))
 
 (defun calculate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
   (list net-count count mapping action inp out off wei mem dat additionals))
