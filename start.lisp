@@ -39,10 +39,11 @@
 ;; memory allocation macro helpers
 (defun allocate-neuron (inputs outputs net-count layer)
   (destructuring-bind (inp out off wei) (names layer 'inp 'out 'off 'wei)
-    `((,inp 'float ,(* net-count inputs))
-      (,out 'float ,(* net-count outputs))
-      (,off 'float ,(* net-count outputs))
-      (,wei 'float ,(* net-count inputs outputs)))))
+    (let ((outputs-2 (if (mem-p (car layer)) (* 4 outputs) outputs)))
+      `((,inp 'float ,(* net-count inputs))
+        (,out 'float ,(* net-count outputs))
+        (,off 'float ,(* outputs-2 net-count))
+        (,wei 'float ,(* net-count inputs outputs-2))))))
 
 (defun allocate-storage (inputs outputs net-count layer)
   (let ((gate-layer (allocate-neuron inputs outputs net-count layer)))
