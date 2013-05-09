@@ -142,8 +142,10 @@
   (mapcar (action-maker count layers) layers))
 
 
-;execution validation
-(defun calculate-neuron (net-count count mapping action inp off wei additionals)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;    neural network execution validation   ;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun calculate-neuron (net-count count mapping inp off wei additionals)
   (labels ((map-inputs (id m &optional (i 0))
               (when m
                 (destructuring-bind (siz name start end) (car m)
@@ -162,12 +164,12 @@
                    (summarize inputs (* id count (list-length inputs)) 0))))))))
 
 (defun validate-neuron (net-count count mapping action inp out off wei &rest additionals)
-  (let ((cpu-results (calculate-neuron net-count count mapping action inp off wei additionals)))
+  (let ((cpu-results (calculate-neuron net-count count mapping inp off wei additionals)))
     (labels ((test (results &optional (i 0) (diffs nil))
                (if results
                    (test (cdr results)
                          (1+ i)
-                         (cons (- (mem-aref out i) (car results)) diffs))
+                         (cons (list (mem-aref out i) (car results)) diffs))
                    diffs)))
       (funcall action)
       (memcpy-device-to-host out)
