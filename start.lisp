@@ -73,7 +73,7 @@
       `(let ((,i-a (+ ,start (* ,i-width block-idx-x)))
              (,i-z (+ ,i-a ,(- end start))))
          (do ((,i-i ,i-a (+ ,i-i 1)))
-             ((> ,i-i ,i-z))
+             ((>= ,i-i ,i-z))
              (set sum (+ sum (* (aref ,inp ,i-i) (aref ,wei wei-i))))
              (set wei-i (+ wei-i 1)))))))
 
