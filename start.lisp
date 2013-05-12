@@ -248,7 +248,7 @@
 ;;neural network allocation and definition
 (defmacro with-neural-networks (name count layers &body body)
   (let* ((layers (add-var-names layers name))
-         (allocation-list (allocate-net-memory count layers))
+         (allocation-list (allocate-net-memory (+ 3 count) layers))
          (kernels-actions (create-net-actions count layers)))
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
@@ -271,7 +271,7 @@
 (defun main ()
   (with-cuda-context (0)
     (with-neural-networks rat
-                          1
+                          2048
                           ;name   inputs                outputs
                           ((A     ((nil 0 64) (G 64 96))    96)
                            (B     ((A 0 96))                96)
