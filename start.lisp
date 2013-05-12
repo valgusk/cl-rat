@@ -303,7 +303,7 @@
 (defun main ()
   (with-cuda-context (0)
     (with-neural-networks rat
-                          2048
+                          2
                           ;name   inputs                outputs
                           ((A     ((nil 0 64) (G 64 96))    96)
                            (B     ((A 0 96))                96)
