@@ -5,25 +5,13 @@
   (:export :main))
 
 
-(in-package :cl-cuda)
+(in-package :genetics)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;       some dirty hacks         ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(setf (getf cl-cuda::+built-in-functions+ 'tanh) '(((float) float nil "tanh")))
+(setf (getf cl-cuda::+built-in-functions+ 'nearbyintf) '(((float) float nil "nearbyintf")))
 
-(setf (+built-in-functions+ 'tanh) '(((float) float nil "tanh")))
-(setf (+built-in-functions+ 'nearbyintf) '(((float) float nil "nearbyintf")))
-
-
-
-(defun part-h-to-d (blk offset-h offset-d count)
-  (let ((cffi-ptr (memory-block-cffi-ptr blk))
-        (size (type-size (memory-block-type blk))))
-    (with-memory-block-device-ptr (device-ptr blk)
-      (cu-memcpy-host-to-device (cffi:mem-aref device-ptr 'cu-device-ptr (* size offset-d))
-                                (inc-pointer cffi-ptr (* size offset-h))
-                                (* size count)))))
-
-(in-package :genetics)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;    neural network definition   ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
