@@ -21,11 +21,11 @@
 
 (defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
 
-(defun give-name (net-name layer-name suffix &optional (fun #'clean-gensym))
-  (funcall fun (format nil "~a-~a-~a" net-name layer-name suffix)))
+(defun give-name (params &optional (fun #'clean-gensym))
+  (funcall fun (format nil "~{~a~^-~}" params)))
 
 (defun assign-names (layer-name net-name)
-  (flet ((gen-name (suffix) (give-name net-name layer-name suffix #'read-from-string)))
+  (flet ((gen-name (suffix) (give-name (list net-name layer-name suffix) #'read-from-string)))
     (mapcar #'gen-name '(inp out wei off mem dat ker ker-2 act))))
 
 (defun add-var-names (layers net-name)
