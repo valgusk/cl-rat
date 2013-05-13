@@ -257,7 +257,33 @@
     `(,mutate (id id-result)
           nil)))
 
+(defun get-chromosome-kernel (name layers)
+  (flet ((params (l)
+            (let ((wei-n (* (third l) (count-inputs (second l))))
+                  (off-n (third l)))
+              (destructuring-bind (wei off) (names l 'wei 'off)
+                `(((,wei float*) (,off float*))
+                  (,wei ,off)
+                  (,wei-n ,off-n)))))
+         (copy-code (param size)
+            (let ((start (give-name (list "start" param))))
+              `(let ((,start (* id ,size)))
+                  (if (< i ,size)
+                    (set (aref chromosome (+ cur i))
+                         (aref ,param (+ ,start i))))
+                  (set cur (+ cur ,size))))))
+    (let* ((layer-data (mapcar #'params layers))
+           (ps (mapcan #'first layer-data))
+           (pnames (mapcan #'second layer-data))
+           (psizes (mapcan #'third layer-data)))
+      `(defkernel ,(give-name (list name 'dissect)) (void (,@ps (chromosome float*) (id int)))
+          (let ((cur 0)
+                (i (+ thread-idx-x (* block-idx-x block-dim-x))))
+            ,@(mapcar #'copy-code pnames psizes))))))
 
+
+(defun add-chromosome-actions (layers)
+  nil)
 
 
 
@@ -277,9 +303,10 @@
     (print `(with-memory-blocks ,allocation-list
               ,@(mapcar #'first kernels-actions)
               ,@(add-initialization layers)
+              ,(get-chromosome-kernel name layers)
               (labels (,@(mapcar #'second kernels-actions)
                        (,(read-from-string (format nil "run-~a" name)) ()
-                        ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
+                       ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        (validate ()
                          ,@(create-validator layers count)))
                 ,@body)))))
