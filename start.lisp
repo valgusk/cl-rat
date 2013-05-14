@@ -253,15 +253,76 @@
 ;;;;;;;;;;;;;;;;;;;      neural network runtime modifications       ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun crossover (net-name layers)
+;grey code manipulation
+(defun float-to-binary-str(f a z)
+  (let* ((f (coerce f 'double-float))
+         (a (coerce a 'double-float))
+         (z (coerce z 'double-float))
+         (integer (* (parse-integer (make-string 64 :initial-element #\1)
+                                    :radix 2)
+                     (/ (- f a) (- z a)))))
+    (format nil "~64,'0b" (round integer))))
+
+(defun binary-str-to-float(bs a z)
+  (let* ((a (coerce a 'double-float))
+         (z (coerce z 'double-float))
+         (integer (parse-integer bs :radix 2)))
+    (coerce (+ a (* (- z a) (/ integer (parse-integer (make-string 64 :initial-element #\1)
+                                                      :radix 2))))
+            'single-float)))
+
+(defun greyful-str(bs)
+  (let* ((shifted-a (subseq bs 1))
+         (shifted-b (subseq bs 0 (length bs))))
+    (concatenate 'string
+      (subseq bs 0 1)
+      (map 'string #'(lambda (a b) (if (equal a b) #\0 #\1)) shifted-a shifted-b))))
+
+(defun colorful-str(gs)
+  (reverse (concatenate 'string
+    (reduce
+      #'(lambda (xs x)
+          (cons (if (equal (car xs) x) #\0 #\1) xs))
+      (subseq gs 1 (length gs))
+      :initial-value (list (elt gs 0))))))
+
+(defun apply-as-grey (fun &rest params)
+  (let ((grey-params (mapcar
+                       #'(lambda (p)
+                           (greyful-str
+                             (float-to-binary-str
+                               p -1.0 1.0)))
+                       params)))
+    (binary-str-to-float (colorful-str (apply fun grey-params))
+      -1.0 1.0)))
+
+
+(apply-as-grey #'strand 0.0003 0.0005)
+
+(defun strand (as bs)
+  (print (type-of as))
+  (map 'string #'(lambda (a b) (if (and (equal a #\1) (equal a b)) #\1 #\0)) as bs))
+
+
+(defun crossover (name)
   (let ((cross (read-from-string (format nil "cross-~a" name))))
     `(,cross (id-a id-b id-result)
           nil)))
 
-(defun mutation (net-name layers)
-  (let ((mutate (read-from-string (format nil "mutate-~a" name))))
+
+(defun mutate-chromosome (blk)
+  nil)
+
+
+(defun mutation (name)
+  (let ((mutate (read-from-string (format nil "mutate-~a" name)))
+        (dissect (give-name (list name 'dissect) #'read-from-string))
+        (stitch (give-name (list name 'stitch) #'read-from-string))
+        (reg-0 (give-name (list name 'reg 0) #'read-from-string)))
     `(,mutate (id id-result)
-          nil)))
+          (,dissect id ,reg-0)
+          (mutate-chromosome ,reg-0)
+          (,stitch id-result ,reg-0))))
 
 (defun add-chromosome-transport (name layers d-to-h)
   (flet ((params (l)
