@@ -69,6 +69,12 @@
 (defun allocate-net-memory (count layers)
   (mapcan (layer-maker count) layers))
 
+(defun allocate-register-memory (name count layers)
+  (let ((size (loop for l in layers sum
+                (* (third l)(+ (count-inputs (second l)) 1)))))
+    (loop for n from 0 below count collect
+      `(,(give-name (list name 'reg n) #'read-from-string) 'float ,size))))
+
 ;; layer kernel definition macro helpers
 (defun process-input-var (input-list wei all-layers def-name def-width)
   (destructuring-bind (name start end) input-list
@@ -284,7 +290,7 @@
                  (i (+ thread-idx-x (* block-idx-x block-dim-x))))
              ,@(mapcar #'copy-code pnames psizes)))
          (,(give-name (list name (if d-to-h 'dissect 'stitch)) #'read-from-string) (id blk)
-            nil)))))
+            (,kernel-name ,@pnames blk id))))))
 
 
 (defun add-chromosome-actions (layers)
@@ -300,14 +306,15 @@
 ;;neural network allocation and definition
 (defmacro with-neural-networks (name count layers &body body)
   (let* ((layers (add-var-names layers name))
-         (allocation-list (allocate-net-memory (+ 3 count) layers))
+         (allocation-list (allocate-net-memory count layers))
          (kernels-actions (create-net-actions count layers))
          (dissect-kernel-action (add-chromosome-transport name layers T))
-         (stitch-kernel-action (add-chromosome-transport name layers nil)))
+         (stitch-kernel-action (add-chromosome-transport name layers nil))
+         (register-list (allocate-register-memory name 3 layers)))
     (format t "~%The ~a will require ~a MB on host and device~%"
               name
               (/ (* 4.0 (apply #'+ (mapcar #'third allocation-list))) 1024 1024))
-    (print `(with-memory-blocks ,allocation-list
+    (print `(with-memory-blocks (,@allocation-list ,@register-list)
               ,@(mapcar #'first kernels-actions)
               ,@(add-initialization layers)
               ,(first dissect-kernel-action)
