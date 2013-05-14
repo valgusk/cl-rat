@@ -277,7 +277,7 @@
                    (host `(aref chromosome (+ cur i))))
               `(let ((,start (* id ,size)))
                   (if (< i ,size)
-                    (set ,@(if d-to-h `(,device ,host) `(,host ,device))))
+                    (set ,@(if d-to-h `(,host ,device) `(,device ,host))))
                   (set cur (+ cur ,size))))))
     (let* ((kernel-name (give-name (list name (if d-to-h 'dissect 'stitch) 'kernel)
                                    #'read-from-string))
@@ -290,7 +290,9 @@
                  (i (+ thread-idx-x (* block-idx-x block-dim-x))))
              ,@(mapcar #'copy-code pnames psizes)))
          (,(give-name (list name (if d-to-h 'dissect 'stitch)) #'read-from-string) (id blk)
-            (,kernel-name ,@pnames blk id))))))
+            (,kernel-name ,@pnames blk id
+              :grid-dim (list ,(ceiling (/ (apply #'max psizes) 512)) 1 1)
+              :block-dim (list 512 1 1)))))))
 
 
 (defun add-chromosome-actions (layers)
