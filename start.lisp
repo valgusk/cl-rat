@@ -73,7 +73,7 @@
     (loop for n from 0 below count collect
       `(,(give-name (list name 'reg n) #'read-from-string)
         'float
-        ,(reduce #'+ (print (mapcar #'third (allocate-net-memory 1 layers)))))))
+        ,(reduce #'+ (mapcar #'third (allocate-net-memory 1 layers))))))
 
 ;; layer kernel definition macro helpers
 (defun process-input-var (input-list wei all-layers def-name def-width)
