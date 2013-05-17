@@ -70,10 +70,10 @@
   (mapcan (layer-maker count) layers))
 
 (defun allocate-register-memory (name count layers)
-  (let ((size (loop for l in layers sum
-                (* (third l)(+ (count-inputs (second l)) 1)))))
     (loop for n from 0 below count collect
-      `(,(give-name (list name 'reg n) #'read-from-string) 'float ,size))))
+      `(,(give-name (list name 'reg n) #'read-from-string)
+        'float
+        ,(reduce #'+ (print (mapcar #'third (allocate-net-memory 1 layers)))))))
 
 ;; layer kernel definition macro helpers
 (defun process-input-var (input-list wei all-layers def-name def-width)
@@ -243,7 +243,7 @@
            `((init-fill ,inp)
              (init-fill ,out #'(lambda () 0.0))
              (init-fill ,wei)
-             (init-fill ,off #'(lambda () 1.0))
+             (init-fill ,off #'(lambda () 0.0))
              ,@(when (mem-p (first layer))
                  `((init-fill ,mem #'(lambda () 0.0))
                    (init-fill ,dat #'(lambda () 0.0)))))))
@@ -293,12 +293,14 @@
 
 (defun add-chromosome-transport (name layers d-to-h)
   (flet ((params (l)
-            (let ((wei-n (* (third l) (count-inputs (second l))))
-                  (off-n (third l)))
-              (destructuring-bind (wei off) (names l 'wei 'off)
-                `(((,wei float*) (,off float*))
-                  (,wei ,off)
-                  (,wei-n ,off-n)))))
+            (let ((alloc-data (funcall (if (mem-p (first l))
+                                           #'allocate-storage
+                                           #'allocate-neuron)
+                                (count-inputs (second l)) (third l) 1 l)))
+              (mapcar #'(lambda (a) `((,(first a) float*)
+                                       ,(first a)
+                                       ,(third a)
+                                       ,l)) alloc-data)))
          (copy-code (param size)
             (let* ((start (give-name (list "start" param)))
                    (device `(aref ,param (+ ,start i)))
@@ -309,10 +311,11 @@
                   (set cur (+ cur ,size))))))
     (let* ((kernel-name (give-name (list name (if d-to-h 'dissect 'stitch) 'kernel)
                                    #'read-from-string))
-           (layer-data (mapcar #'params layers))
-           (ps (mapcan #'first layer-data))
-           (pnames (mapcan #'second layer-data))
-           (psizes (mapcan #'third layer-data)))
+           (layer-data (mapcan #'params layers))
+           (ps (mapcar #'first layer-data))
+           (pnames (mapcar #'second layer-data))
+           (psizes (mapcar #'third layer-data))
+           (topology (mapcar #'cdr layer-data)))
       `((defkernel ,kernel-name (void (,@ps (chromosome float*) (id int)))
            (let ((cur 0)
                  (i (+ thread-idx-x (* block-idx-x block-dim-x))))
@@ -320,7 +323,8 @@
          (,(give-name (list name (if d-to-h 'dissect 'stitch)) #'read-from-string) (id blk)
             (,kernel-name ,@pnames blk id
               :grid-dim (list ,(ceiling (/ (apply #'max psizes) 512)) 1 1)
-              :block-dim (list 512 1 1)))))))
+              :block-dim (list 512 1 1))
+            'topology)))))
 
 
 (defun add-chromosome-actions (layers)
