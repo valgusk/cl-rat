@@ -213,9 +213,47 @@
               :grid-dim (list ,(ceiling (/ (apply #'max psizes) 512)) 1 1)
               :block-dim (list 512 1 1)))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;      neural network genetic modifications       ;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun add-chromosome-actions (layers)
-  nil)
+(defun add-chromosome-actions (name layers)
+  (labels ((modify (length mod prob)
+             `(loop for i from start below (+ start ,length) by step
+                 do (let ((should-mod ,prob))
+                        (loop for j from (+ start i)
+                                    below (+ start i step)
+                                    do ,mod))))
+           (nullify (length)
+              `(loop for i from start below (+ start ,length)
+                 do (setf (mem-aref result i) 0.0)))
+           (act (l mod prob)
+             (let ((gen-mat (names l 'wei 'off))
+                   (params (allocate-layer-memory l 1)))
+               (loop for param in params append
+                 (list
+                   (if (member (first param) gen-mat)
+                     `(let ((step ,(nth (position (first param) gen-mat)
+                                        (list (* (count-inputs (second l))
+                                                 (third l))
+                                              (third l)))))
+                        ,(modify (third param) mod prob))
+                      (nullify (third param)))
+                   `(incf start ,(third param)))))))
+    `((,(give-name (list name 'crossover)) (result parent-a parent-b &optional (start 0))
+         ,@(loop for l in layers append
+             (act l `(setf (mem-aref result j)
+                           (if should-mod
+                               (mem-aref parent-b j)
+                               (mem-aref parent-a j)))
+                    `(> (random 1.0) 0.8))))
+      (,(give-name (list name 'mutation)) (result parent &optional (start 0))
+         ,@(loop for l in layers append
+             (act l `(setf (mem-aref result j)
+                           (if should-mod
+                               (+ -1.0 (random 2.0) (mem-aref parent j))
+                               (mem-aref parent j)))
+                    `(> (random 1.0) 0.8)))))))
 
 
 
@@ -245,6 +283,7 @@
                        ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        ,(second dissect-kernel-action)
                        ,(second stitch-kernel-action)
+                       ,@(add-chromosome-actions name layers)
                        (validate ()
                          ,@(create-validator layers count)))
                 ,@body)))))
