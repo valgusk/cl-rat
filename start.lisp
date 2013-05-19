@@ -185,44 +185,6 @@
 ;;;;;;;;;;;;;;;;;;;      neural network runtime modifications       ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun crossover (name)
-  (let ((cross (read-from-string (format nil "cross-~a" name))))
-    `(,cross (id-a id-b id-result)
-          nil)))
-
-
-(defun mutate-chromosome (blk topology)
-  (labels ((mutate-layer (wei-start cluster-data)
-             (let* ((inp-n (first cluster-data))
-                    (wei-n (apply #'* cluster-data))
-                    (off-n (second cluster-data))
-                    (off-start (+ wei-start wei-n))
-                    (next-layer (+ wei-start wei-n off-n)))
-               (do ((wei-i wei-start (+ wei-i inp-n))
-                    (off-i off-start (+ off-i 1)))
-                    ((>= off-i off-n)
-                       (let ((should-touch (> (random 10) 8)))
-                         (when should-touch
-                           (loop for i from wei-i below (+ wei-i inp-n)
-                             do (add-random i))
-                           (add-random off-i)))))
-               next-layer))
-             (add-random (i)
-                (setf (mem-aref blk i) (+ (- (random 0.5) 0.25)
-                                          (mem-aref blk i)))))
-    (reduce #'mutate-layer topology :initial-value 0)))
-
-
-(defun mutation (name)
-  (let ((mutate (read-from-string (format nil "mutate-~a" name)))
-        (dissect (give-name (list name 'dissect) #'read-from-string))
-        (stitch (give-name (list name 'stitch) #'read-from-string))
-        (reg-0 (give-name (list name 'reg 0) #'read-from-string)))
-    `(,mutate (id id-result)
-          (,dissect id ,reg-0)
-          (mutate-chromosome ,reg-0)
-          (,stitch id-result ,reg-0))))
-
 (defun add-chromosome-transport (name layers d-to-h)
   (flet ((params (l)
             (let ((alloc-data (funcall (if (mem-p (first l))
