@@ -112,7 +112,7 @@
 (defun create-storage-kernel (kernel-name layer)
   (destructuring-bind (mem out dat) (names layer 'mem 'out 'dat)
     `((defkernel ,kernel-name (void ((,mem float*) (,out float*) (,dat float*)))
-         (let ((i (+ (* block-dim-x block-idx-x) (* 4 thread-idx-x)))
+         (let ((i (+ (* block-dim-x block-idx-x 4) (* 4 thread-idx-x)))
                (o (+ (* block-dim-x block-idx-x) thread-idx-x))
                (input (aref ,mem i))
                (store (nearbyintf (/ (+ 1.0 (aref ,mem (+ i 1))) 2.0)))
