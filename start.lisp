@@ -21,11 +21,11 @@
 
 (defun clean-gensym (a) (read-from-string (symbol-name (gensym a))))
 
-(defun give-name (params &optional (fun #'clean-gensym))
+(defun give-name (params &optional (fun #'read-from-string))
   (funcall fun (format nil "~{~a~^-~}" params)))
 
 (defun assign-names (layer-name net-name)
-  (flet ((gen-name (suffix) (give-name (list net-name layer-name suffix) #'read-from-string)))
+  (flet ((gen-name (suffix) (give-name (list net-name layer-name suffix))))
     (mapcar #'gen-name '(inp out wei off mem dat ker ker-2 act))))
 
 (defun add-var-names (layers net-name)
@@ -71,7 +71,7 @@
 
 (defun allocate-register-memory (name count layers)
     (loop for n from 0 below count collect
-      `(,(give-name (list name 'reg n) #'read-from-string)
+      `(,(give-name (list name 'reg n))
         'float
         ,(reduce #'+ (mapcar #'third (allocate-net-memory 1 layers))))))
 
@@ -182,12 +182,12 @@
      layers))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;      neural network runtime modifications       ;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;        neural network transport actions       ;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defun copy-code (param size d-to-h)
-  (let* ((start (give-name (list "start" param)))
+  (let* ((start (give-name (list "start" param) #'clean-gensym))
          (device `(aref ,param (+ ,start i)))
          (host `(aref chromosome (+ cur i))))
     `(let ((,start (* id ,size)))
@@ -198,8 +198,7 @@
 (defun add-chromosome-transport (name layers d-to-h)
   (flet ((params (l) (allocate-layer-memory l 1))
          (copy-code (param size) (copy-code param size d-to-h)))
-    (let* ((kernel-name (give-name (list name (if d-to-h 'dissect 'stitch) 'kernel)
-                                   #'read-from-string))
+    (let* ((kernel-name (give-name (list name (if d-to-h 'dissect 'stitch) 'kernel)))
            (layer-data (mapcan #'params layers))
            (ps (loop for l in layer-data collect `(,(first l) float*)))
            (pnames (loop for l in layer-data collect (first l)))
@@ -208,11 +207,10 @@
            (let ((cur 0)
                  (i (+ thread-idx-x (* block-idx-x block-dim-x))))
              ,@(mapcar #'copy-code pnames psizes)))
-         (,(give-name (list name (if d-to-h 'dissect 'stitch)) #'read-from-string) (id blk)
+         (,(give-name (list name (if d-to-h 'dissect 'stitch))) (id blk)
             (,kernel-name ,@pnames blk id
               :grid-dim (list ,(ceiling (/ (apply #'max psizes) 512)) 1 1)
-              :block-dim (list 512 1 1))
-            'topology)))))
+              :block-dim (list 512 1 1)))))))
 
 
 (defun add-chromosome-actions (layers)
