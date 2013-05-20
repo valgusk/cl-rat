@@ -176,7 +176,7 @@
            `((init-fill ,inp)
              (init-fill ,out #'(lambda () 0.0))
              (init-fill ,wei)
-             (init-fill ,off #'(lambda () 0.0))
+             (init-fill ,off)
              ,@(when (mem-p (first layer))
                  `((init-fill ,mem #'(lambda () 0.0))
                    (init-fill ,dat #'(lambda () 0.0)))))))
@@ -217,45 +217,56 @@
 ;;;;;;;;;;;;;;;;;;;      neural network genetic modifications       ;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun add-chromosome-actions (name layers)
-  (labels ((modify (length mod prob)
-             `(loop for i from start below (+ start ,length) by step
-                 do (let ((should-mod ,prob))
-                        (loop for j from (+ start i)
-                                    below (+ start i step)
-                                    do ,mod))))
-           (nullify (length)
-              `(loop for i from start below (+ start ,length)
-                 do (setf (mem-aref result i) 0.0)))
-           (act (l mod prob)
-             (let ((gen-mat (names l 'wei 'off))
-                   (params (allocate-layer-memory l 1)))
-               (loop for param in params append
-                 (list
-                   (if (member (first param) gen-mat)
-                     `(let ((step ,(nth (position (first param) gen-mat)
-                                        (list (* (count-inputs (second l))
-                                                 (third l))
-                                              (third l)))))
-                        ,(modify (third param) mod prob))
-                      (nullify (third param)))
-                   `(incf start ,(third param)))))))
-    `((,(give-name (list name 'crossover)) (result parent-a parent-b &optional (start 0))
-         ,@(loop for l in layers append
-             (act l `(setf (mem-aref result j)
-                           (if should-mod
-                               (mem-aref parent-b j)
-                               (mem-aref parent-a j)))
-                    `(> (random 1.0) 0.8))))
-      (,(give-name (list name 'mutation)) (result parent &optional (start 0))
-         ,@(loop for l in layers append
-             (act l `(setf (mem-aref result j)
-                           (if should-mod
-                               (+ -1.0 (random 2.0) (mem-aref parent j))
-                               (mem-aref parent j)))
-                    `(> (random 1.0) 0.8)))))))
+(defun extend-options (options off)
+  (when options
+    (let ((end (+ off (third (first options)))))
+      (cons (append (first options) `(,off ,end))
+            (extend-options (rest options) end)))))
 
+(defun mod-nodes (fun layers &optional (off 0))
+  (let* ((l (first layers))
+         (options (extend-options (allocate-layer-memory l 1) off))
+         (offs (find (car (names l 'off)) options :key #'first))
+         (weis (find (car (names l 'wei)) options :key #'first))
+         (end (+ off (fifth (first (last options))))))
 
+    (append
+      (funcall fun weis offs (set-difference options (list weis offs)))
+      (when (rest layers) (mod-nodes fun (rest layers) end)))))
+
+(defun add-chromosome-action (name layers type)
+  (labels
+    ((iterate-genetic (wei off rest body)
+       `((do ((wei ,(fourth wei) (+ wei ,(/ (third wei) (third off))))
+              (off ,(fourth off) (1+ off)))
+             ((= off ,(fifth off)) nil)
+           ,body)
+         ,@(nullify-rest rest)))
+     (nullify-rest (rest)
+        (loop for r in rest collect
+          `(loop for i from ,(fourth r) below ,(fifth r) do
+              (setf (mem-aref result i) 0.0))))
+     (cross (wei off rest)
+        (iterate-genetic wei off rest
+           `(let ((par (if (< (random 1.0) 0.5) parent-b parent-a)))
+              (setf (mem-aref result off) (mem-aref par off))
+              (loop for i from wei below
+                    (+ wei ,(/ (third wei) (third off))) do
+                (setf (mem-aref result i) (mem-aref par i))))))
+     (mut (wei off rest)
+        (iterate-genetic wei off rest
+         `(let ((should-rand (< (random 1.0) 0.2)))
+            (setf (mem-aref result off)
+                  (+ (mem-aref parent-a off) (if should-rand (1- (random 2.0)) 0)))
+            (loop for i from wei below
+                  (+ wei ,(/ (third wei) (third off))) do
+              (setf (mem-aref result i)
+                  (+ (mem-aref parent-a i) (if should-rand (1- (random 2.0)) 0)))))))
+     (get-fun (type)
+       (getf (list 'crossover #'cross 'mutation #'mut) type)))
+    `(,(give-name (list name type)) (result parent-a &optional parent-b)
+        (declare (ignorable parent-b))
+        ,@(mod-nodes (get-fun type) layers))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;      neural network definition macro       ;;;;;;;;;;;;;;;;;;;
@@ -283,7 +294,8 @@
                        ,@(mapcar #'(lambda (layer) (names layer 'act)) layers))
                        ,(second dissect-kernel-action)
                        ,(second stitch-kernel-action)
-                       ,@(add-chromosome-actions name layers)
+                       ,(add-chromosome-action name layers 'crossover)
+                       ,(add-chromosome-action name layers 'mutation)
                        (validate ()
                          ,@(create-validator layers count)))
                 ,@body)))))
