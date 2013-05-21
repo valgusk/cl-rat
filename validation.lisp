@@ -29,7 +29,7 @@
   (let ((cpu-results (calculate-neuron net-count count mapping inp off wei additionals)))
       (funcall action)
       (memcpy-device-to-host out)
-      (test out cpu-results)))
+      (nreverse (test out cpu-results))))
 
 (defun validate-memory (net-count count mapping action inp out off wei mem dat &rest additionals)
   (let* ((gate-results (calculate-neuron net-count (* 4 count) mapping inp off wei additionals))
@@ -46,9 +46,9 @@
     (memcpy-device-to-host out)
     (memcpy-device-to-host mem)
     (print 'memory-gates)
-    (print (test mem gate-results))
+    (print (nreverse (test mem gate-results)))
     (print 'memory-outputs)
-    (print (test out cpu-results))))
+    (print (nreverse (test out cpu-results)))))
 
 
 (defun cpu-layer-action (all-layers count)
@@ -67,3 +67,42 @@
 
 (defun create-validator (layers count)
   (mapcar (cpu-layer-action layers count) layers))
+
+
+
+
+; (defun main ()
+;   (with-cuda-context (0)
+;     (with-neural-networks rat
+;                           2
+;                           ;name   inputs                outputs
+;                           ((A ((nil 0 3) (mem-b 0 3)) 3)
+;                            (MEM-B ((a 0 3)) 3))
+;       ; (rat-dissect 0 rat-reg-0)
+;       ; (format t "~%~%################## test execution ####################~%~%")
+;       ; (validate)
+;       ; (format t "~%~%################## test transport ####################~%~%")
+;       ; (rat-stitch 0 rat-reg-0)
+;       ; (rat-stitch 1 rat-reg-0)
+;       ; (validate)
+;       ; (format t "~%################## test crossover ####################~%~%")
+;       ; (rat-dissect 0 rat-reg-0)
+;       ; (rat-dissect 1 rat-reg-1)
+;       ; (memcpy-device-to-host rat-reg-0 rat-reg-1)
+;       ; (rat-crossover rat-reg-2 rat-reg-0 rat-reg-1)
+;       ; (print (loop for i from 0 to 98 collect
+;       ;   (format nil "~a parent-a ~a, parent-b ~a, result ~a" i
+;       ;           (mem-aref rat-reg-0 i)
+;       ;           (mem-aref rat-reg-1 i)
+;       ;           (mem-aref rat-reg-2 i))))
+;       (format t "~%~%################## test mutation ####################~%~%")
+;       (rat-dissect 0 rat-reg-0)
+;       (rat-dissect 1 rat-reg-1)
+;       (memcpy-device-to-host rat-reg-0 rat-reg-1)
+;       (rat-mutation rat-reg-2 rat-reg-0)
+;       (print (loop for i from 0 to 98 collect
+;         (format nil "~a parent-a ~a, result ~a" i
+;                 (mem-aref rat-reg-0 i)
+;                 (mem-aref rat-reg-2 i))))
+
+;   )))
