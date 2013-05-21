@@ -83,28 +83,13 @@
           (rat-stitch (i rat) rat-reg-2)
           rat)
 
-        (give-x-y (target basement &optional (x (random 1.0)) (y (random 1.0)) (thld 0.01))
-          (if (find-if #'(lambda (object) (and (> thld (abs (- (getf object 'x) x)))
-                                               (> thld (abs (- (getf object 'y) y)))
-                                               (incf x (* (random 2.0) (- (getf object 'x) x)))
-                                               (incf x (* (random 2.0) (- (getf object 'x) x)))))
-                       (append (basement-rats basement)
-                               (basement-cats basement)
-                               (basement-plants basement)
-                               (basement-walls basement)))
-              (progn
-                (incf x (- (random 0.1) 0.05))
-                (incf y (- (random 0.1) 0.05))
-                (give-x-y target basement (max 1.0 (min 0.0 x)) (max 1.0 (min 0.0 y)) thld))
-              (setf (getf target 'x) x
-                    (getf target 'y) y)))
-
         (position-rat (rat basements)
           (let ((ok-basement (find-if #'basement-available basements)))
             (push (basement-rats ok-basement) rat)
-            (setf (getf rat 'basement) ok-basement)
-            (give-x-y rat ok-basement)
-            (setf (getf rat 'rot) 0.0)))
+            (setf (getf rat 'basement) ok-basement
+                  (getf rat 'rot) 0.0
+                  (getf target 'x) 0.0
+                  (getf target 'y) 0.0)))
 
         (respawn-rats (top basements)
           (loop for rat in top do
@@ -134,7 +119,10 @@
 
         (start ()
           (let ((rats (loop for i from 0 below (rat-count) collect
-                        `(balls 0 health 1.0 hurt 0.0 x 0.0 y 0.0 rot 0.0 i ,i))))))
+                        `(health 1.0 hurt 0.0 x 0.0 y 0.0 rot 0.0 balls 0 i ,i)))
+                (basements (loop for i from 0 below (ceiling (/ (rat-count) 40)) collect
+                              (create-random-basement))))
+            nil))
 
 
 
