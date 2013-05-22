@@ -21,15 +21,16 @@
       (and (< (abs (- (first f) (first d))) 2)
            (< (abs (- (second f) (second d))) 2))))
 
-(defun connected (dots to)
+(defun connected (dots to &optional tested)
   (if dots
       (let ((con (loop for d in dots append
                     (when (some (neighbour-tester d) to)
                           (list d)))))
         (if con
-            (connected (set-difference dots con) (append con to))
-            to))
-      to))
+            (connected (set-difference dots con) con (append tested to))
+            (append to tested)))
+      (append to tested)))
+
 
 (defun build-walls ()
   (let ((initial-walls `(((0 0)(0 10))
@@ -42,41 +43,42 @@
               (,(random 100) ,(random 100)))))
         (wall-structure nil)
         (group 0))
-    (loop for wall in initial-walls  do
-      (loop do
-        (let* ((x (caar wall))
-               (y (cadar wall))
-               (left-x (- (caadr wall) x))
-               (left-y (- (cadadr wall) y))
-               (new `(,x ,y nil))
-               (neighbours
-                 (remove-if-not (neighbour-tester new) wall-structure))
-               (same (find-if #'(lambda (b) (equal (subseq b 0 2) new))
-                              wall-structure)))
-          (when
-            (notany #'null
-              (loop for n in neighbours collect
-                (let* ((same-group
-                         (set-difference (remove n neighbours)
-                                         (remove (third n) neighbours :key #'third)))
-                       (group-connected (connected same-group (list n))))
-                  (equal same-group (remove n group-connected)))))
-            (push new wall-structure)
-            (setf group (1+ group))
-            (loop for c in (connected (remove new wall-structure)
-                                      (list (or same new))) do
-              (setf (cddr c) (list group))))
-          (unless (zerop left-x)
-            (incf (caar wall) (/ (abs left-x) left-x)))
-          (unless (zerop left-y)
-            (incf (cadar wall) (/ (abs left-y) left-y)))
-          (when (and (zerop left-y) (zerop left-x)) (return)))))
+    (loop for wall in (append initial-walls random-walls)  do
+      (destructuring-bind ((x1 y1) (x2 y2)) wall
+        (let ((by-x (> (abs (- x1 x2)) (abs (- y1 y2))))
+              (min-x (min x1 x2))
+              (min-y (min y1 y2))
+              (max-x (max x1 x2))
+              (max-y (max y1 y2)))
+          (loop for i from (if by-x min-x min-y) to (if by-x max-x max-y)
+                as x = (if by-x i (+ x1 (round (* (- x2 x1) (/ (- i y1) (- y2 y1))))))
+                as y = (if by-x (+ y1 (round (* (- y2 y1) (/ (- i x1) (- x2 x1))))) i) do
+            (let* ((new `(,x ,y nil))
+                   (neighbours
+                     (remove-if-not (neighbour-tester new) wall-structure))
+                   (same (find-if #'(lambda (b) (equal (subseq b 0 2) new))
+                                  wall-structure)))
+              (when
+                (notany #'null
+                  (loop for n in neighbours collect
+                    (let* ((same-group
+                             (set-difference (remove n neighbours)
+                                             (remove (third n) neighbours :key #'third)))
+                           (group-connected (connected same-group (list n))))
+                      (equal same-group (remove n group-connected)))))
+                (push new wall-structure)
+                (setf group (1+ group))
+                (loop for c in (connected (remove new wall-structure)
+                                          (list (or same new))) do
+                  (setf (cddr c) (list group)))))))))
     wall-structure))
+
+(show-walls (build-walls))
 
 (defun show-walls (walls)
   (let ((rows (loop for i from 0 to 100 collect (make-string 100 :initial-element #\Space))))
     (loop for w in walls do
-      (setf (elt (nth (first w) rows) (second w)) #\_))
+      (setf (elt (nth (first w) rows) (second w)) #\X))
   (format t "~{~a~^|~%~}" rows)))
 
 
