@@ -9,6 +9,90 @@
 (in-package :genetics)
 
 (load "geneural.lisp")
+
+; (with-cuda-context (0)
+;   (with-memory-blocks ((res 'float 1))
+;     (memcpy-host-to-device res)
+;     (defkernel etest (void ((te float*)))
+;       (set (aref te 0) (copysignf 1.0 0.0)))
+;     (etest res :grid-dim `(1 1 1)
+;                :block-dim `(1 1 1))
+;     (memcpy-device-to-host res)
+;     (mem-aref res 0)))
+
+
+
+(defkernel get-obj-angle (float ((rot float) (x float) (y float) (x1 float) (y1 float)))
+  (let ((negative-rot (- 0.0 rot))
+        (new-x1 (- (* (- x1 x) (cosf negative-rot))
+                   (* (- y1 y) (sinf negative-rot))))
+        (new-y1 (+ (* (- x1 x) (sinf negative-rot))
+                   (* (- y1 y) (cosf negative-rot)))))
+    (return (atan2f new-x1 new-y1))))
+
+
+(defkernel update-sight (float ((rot float) (x float) (y float) (x1 float) (y1 float)
+                                (where float*) (start-off int) (start-deg float)
+                                (end-deg float) (type float)))
+  (let ((stp 0.005)
+        (a (get-obj-angle rot x y (- x1 stp) (- y1 stp)))
+        (b (get-obj-angle rot x y (- x1 stp) (+ y1 stp)))
+        (c (get-obj-angle rot x y (+ x1 stp) (- y1 stp)))
+        (d (get-obj-angle rot x y (+ x1 stp) (+ y1 stp)))
+        (min (fminf (fminf a b) (fminf c d)))
+        (max (fmaxf (fmaxf a b) (fmaxf c d)))
+        (dist (/ (sqrt (+ (* (- x1 x) (- x1 x)) (* (- y1 y) (- y1 y)))) 2.0))
+        (min-deg (* 180.0 (/ min 3.141592654)))
+        (max-deg (* 180.0 (/ max 3.141592654)))
+        (deg-diff (fabsf (- max-deg min-deg)))
+        (off start-off))
+    (do ((deg start-deg (+ deg 1.0)))
+        ((> deg end-deg))
+      (let ((old-dist (aref where off))
+            (a-diff (copysignf 1.0 (- min-deg deg)))  ;should be < 0
+            (b-diff (copysignf 1.0 (- deg max-deg))) ;should be < 0
+            (is-between (fminf 0.0 (* a-diff b-diff))) ; 0,1
+            (is-shorter (fminf 0.0 (copysignf 1.0 (- old-dist dist)))) ; 0,1
+            (should-be-replaced (* is-between is-shorter)))
+        (set (aref where off) (+ (* old-dist (- 1.0 should-be-replaced))
+                                 (* dist should-be-replaced)))
+        (set (aref where (+ 1 off))
+             (+ (* (aref where (+ 1 off)) (- 1.0 should-be-replaced))
+                (* type should-be-replaced))))
+      (set off (+ 2 off)))))
+
+
+
+(defkernel light-rats (void ((rat-inputs float*) ; rotation x y health hurt hunger
+                             (basements int*)
+                             (basement-count int)
+                             (rat-step int)
+                             (step int)))                ; 356
+  (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 50rats
+        (rat-a (/ i basement-count 50))            ; 0-50
+        (rat-b (- i (* basement-count rat-a 50)))  ; 0-50 require 2500*basement-count threads?
+        (basement-i (/ i step))
+        (rat-a-i (aref basements (+ 2 rat-a (* step basement-i))))
+        (rat-b-i (aref basements (+ 2 rat-b (* step basement-i))))
+        (rat-a-start (* rat-step  rat-a-i))
+        (rat-b-start (* rat-step  rat-b-i)))
+    (update-sight (aref rat-inputs rat-a-start)
+                  (aref rat-inputs (+ 1 rat-a-start))
+                  (aref rat-inputs (+ 2 rat-a-start))
+                  (aref rat-inputs (+ 1 rat-b-start))
+                  (aref rat-inputs (+ 2 rat-b-start))
+                  rat-inputs
+                  (+ 6 rat-a-start)
+                  -29.0 28.0
+                  0.5)))
+
+
+
+
+
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -83,7 +167,7 @@
     (loop do
       (let* ((x (+ 20 (random 80)))
              (y (+ 20 (random 80)))
-             (cat `(x ,x y ,y type #\C)))
+             (cat `(x ,x y ,y type #\C health 1.0)))
         (when (notany (neighbour-tester cat 4)
                       (append (basement-walls basement)
                               (basement-cats basement)))
@@ -96,7 +180,7 @@
     (loop do
       (let* ((x (random 100))
              (y (random 100))
-             (plant `(x ,x y ,y type #\@)))
+             (plant `(x ,x y ,y type #\@ health 1.0)))
         (when (or (some (neighbour-tester plant)
                         (append (basement-walls basement)
                                 (basement-plants basement)))
@@ -122,13 +206,16 @@
 
 ; (show-objects (create-random-basement))
 
-
-
-
-
-
-(defun basement-available (basement)
-  (< (length (basement-rats basement)) 40))
+(defun find-available-basement (basements)
+  (let ((ok-basements (loop for b in basements
+                         if (< (length (basement-rats b)) 40)
+                         collect (list b)))
+        (available-basements (loop for b in basements
+                               if (< (length (basement-rats b)) 50)
+                               collect (list b))))
+    (if (< (length ok-basements) 3)
+        (nth (random (length available-basements)) available-basements)
+        (nth (random (length ok-basements)) ok-basements))))
 
 (defun main ()
   (with-cuda-context (0)
@@ -195,7 +282,7 @@
           rat)
 
         (position-rat (rat basements)
-          (let ((ok-basement (find-if #'basement-available basements)))
+          (let ((ok-basement (find-available-basement basements)))
             (push (basement-rats ok-basement) rat)
             (setf (getf rat 'basement) ok-basement
                   (getf rat 'rot) 0.0
@@ -217,23 +304,38 @@
         (get-top (rats)
           (sort rats #'(lambda (a b) (< (getf a 'balls) (getf b 'balls)))))
 
-        (update-rats (rats basements)
-          (memcpy-device-to-host rat-a-inp)
-          (loop for rat in rats do
-            (setf (getf rat 'hurt) (mem-aref (+ (* 96 (i rat)) 64)))
-            (decf (getf rat 'health) (getf rat 'hurt))
-            (incf (getf rat 'balls))
-            (setf (getf rat 'x) (mem-aref (+ (* 96 (i rat)) 65)))
-            (setf (getf rat 'y) (mem-aref (+ (* 96 (i rat)) 66)))
-            (setf (getf rat 'rot) (mem-aref (+ (* 96 (i rat)) 67))))
-          (respawn-rats (get-top rats) basements))
+        (rat-stats () '(health hurt hunger balls x y rot))
+
+        (update-rats (rats stat-blk basements)
+          (let* ((stats (rat-stats))
+                 (stat-count (length stats)))
+            (memcpy-device-to-host stat-blk)
+            (loop for rat in rats do
+              (loop for stat in stats
+                    for i from 0 below stat-count do
+                (setf (getf rat stat) (mem-aref stat-blk (+ (* stat-count (i rat)) 0)))))
+            (respawn-rats (get-top rats) basements)))
 
         (start ()
-          (let ((rats (loop for i from 0 below (rat-count) collect
-                        `(health 1.0 hurt 0.0 x 0.0 y 0.0 rot 0.0 balls 0 i ,i)))
-                (basements (loop for i from 0 below (ceiling (/ (rat-count) 40)) collect
-                              (create-random-basement))))
-            nil))
+          (let* ((rats (loop for i from 0 below (rat-count) collect
+                         `(health 1.0 hurt 0.0 x 0.0 y 0.0 rot 0.0 balls 0 i ,i)))
+                 (basements (loop for i from 0 below (ceiling (/ (rat-count) 40)) collect
+                               (create-random-basement)))
+                 (basement-wall-count (loop for b in basements sum (length (basement-walls b)))))
+            (with-memory-blocks ((rat-stat-blck 'float (* (length (rat-stats)) (rat-count)))
+                                 (basement-blck 'int (+ (* (length basements) ;basement count
+                                                          (+  2      ;wall-off-end
+                                                              50     ;each-rat-i
+                                                              300    ;each-plant-i
+                                                              4      ;each-cat-i
+                                                              ; = 356
+                                                          ))
+                                                        basement-wall-count   ;total wall count
+                                                        )))
+
+              nil)))
+
+
 
 
 
@@ -245,5 +347,7 @@
 
         (start)
         (run-rat)))))
+
+
 
 (main)

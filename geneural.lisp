@@ -4,6 +4,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (setf (getf cl-cuda::+built-in-functions+ 'tanh) '(((float) float nil "tanh")))
 (setf (getf cl-cuda::+built-in-functions+ 'nearbyintf) '(((float) float nil "nearbyintf")))
+(setf (getf cl-cuda::+built-in-functions+ 'fminf) '(((float float) float nil "fminf")))
+(setf (getf cl-cuda::+built-in-functions+ 'fmaxf) '(((float float) float nil "fmaxf")))
+(setf (getf cl-cuda::+built-in-functions+ 'fmodf) '(((float float) float nil "fmodf")))
+(setf (getf cl-cuda::+built-in-functions+ 'fabsf) '(((float) float nil "fabsf")))
+(setf (getf cl-cuda::+built-in-functions+ 'sinf) '(((float) float nil "sinf")))
+(setf (getf cl-cuda::+built-in-functions+ 'cosf) '(((float) float nil "cosf")))
+(setf (getf cl-cuda::+built-in-functions+ 'atan2f) '(((float float) float nil "atan2f")))
+(setf (getf cl-cuda::+built-in-functions+ 'to-int) '(((float) int nil "__float2int_rd")))
+(setf (getf cl-cuda::+built-in-functions+ 'copysignf) '(((float float) float nil "copysignf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;    neural network definition   ;;;;;;;;;;;;;;;;;;;;;;;;
