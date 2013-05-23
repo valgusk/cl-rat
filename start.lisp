@@ -11,10 +11,10 @@
 (load "geneural.lisp")
 
 ; (with-cuda-context (0)
-;   (with-memory-blocks ((res 'float 1))
+;   (with-memory-blocks ((res 'int 1))
 ;     (memcpy-host-to-device res)
-;     (defkernel etest (void ((te float*)))
-;       (set (aref te 0) (copysignf 1.0 0.0)))
+;     (defkernel etest (void ((te int*)))
+;       (set (aref te 0) (/ 50 14)))
 ;     (etest res :grid-dim `(1 1 1)
 ;                :block-dim `(1 1 1))
 ;     (memcpy-device-to-host res)
@@ -33,7 +33,7 @@
 
 (defkernel update-sight (float ((rot float) (x float) (y float) (x1 float) (y1 float)
                                 (where float*) (start-off int) (start-deg float)
-                                (end-deg float) (type float)))
+                                (end-deg float) (type float) (active float)))
   (let ((stp 0.005)
         (a (get-obj-angle rot x y (- x1 stp) (- y1 stp)))
         (b (get-obj-angle rot x y (- x1 stp) (+ y1 stp)))
@@ -53,7 +53,7 @@
             (b-diff (copysignf 1.0 (- deg max-deg))) ;should be < 0
             (is-between (fminf 0.0 (* a-diff b-diff))) ; 0,1
             (is-shorter (fminf 0.0 (copysignf 1.0 (- old-dist dist)))) ; 0,1
-            (should-be-replaced (* is-between is-shorter)))
+            (should-be-replaced (* active is-between is-shorter)))
         (set (aref where off) (+ (* old-dist (- 1.0 should-be-replaced))
                                  (* dist should-be-replaced)))
         (set (aref where (+ 1 off))
@@ -69,13 +69,14 @@
                              (rat-step int)
                              (step int)))                ; 356
   (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 50rats
-        (rat-a (/ i basement-count 50))            ; 0-50
-        (rat-b (- i (* basement-count rat-a 50)))  ; 0-50 require 2500*basement-count threads?
+        (rat-a (/ i basement-count 50))            ; 0-49
+        (rat-b (- i (* basement-count rat-a 50)))  ; 0-49 require 2500*basement-count threads?
         (basement-i (/ i step))
         (rat-a-i (aref basements (+ 2 rat-a (* step basement-i))))
         (rat-b-i (aref basements (+ 2 rat-b (* step basement-i))))
         (rat-a-start (* rat-step  rat-a-i))
-        (rat-b-start (* rat-step  rat-b-i)))
+        (rat-b-start (* rat-step  rat-b-i))
+        (rat-b-alive (fminf 0.0 (copysignf 1.0 (aref rat-inputs (+ 3 rat-a-start))))))
     (update-sight (aref rat-inputs rat-a-start)
                   (aref rat-inputs (+ 1 rat-a-start))
                   (aref rat-inputs (+ 2 rat-a-start))
@@ -84,10 +85,63 @@
                   rat-inputs
                   (+ 6 rat-a-start)
                   -29.0 28.0
-                  0.5)))
+                  0.5
+                  rat-b-alive)))
 
 
+(defkernel light-cats (void ((rat-inputs float*) ; rotation x y health hurt hunger
+                             (basements int*)
+                             (basement-count int)
+                             (cats float*) ; x  y
+                             (cat-step int)
+                             (rat-step int)
+                             (step int)))
+ (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 4cats
+       (rat (/ i basement-count 50))                    ; 0-49
+       (cat (- i (* basement-count rat 50)))            ; 0-3
+       (basement-i (/ i step))
+       (rat-i (aref basements (+ 2 rat (* step basement-i))))
+       (cat-i (aref basements (+ 352 cat (* step basement-i))))
+       (rat-start (* rat-step  rat-i))
+       (cat-start (* cat-step  cat-i)))
+  (update-sight (aref rat-inputs rat-start)
+                (aref rat-inputs (+ 1 rat-start))
+                (aref rat-inputs (+ 2 rat-start))
+                (aref cats (+ 1 cat-start))
+                (aref cats (+ 2 cat-start))
+                rat-inputs
+                (+ 6 rat-start)
+                -29.0 28.0
+                -1.0
+                1.0)))
 
+
+(defkernel light-plants (void ((rat-inputs float*) ; rotation x y health hurt hunger
+                               (basements int*)
+                               (basement-count int)
+                               (plants float*) ; x  y health
+                               (plant-step int)
+                               (rat-step int)
+                               (step int)))
+ (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 300plants
+       (rat (/ i basement-count 50))                    ; 0-49
+       (plant (- i (* basement-count rat 50)))          ; 0-299
+       (basement-i (/ i step))
+       (rat-i (aref basements (+ 2 rat (* step basement-i))))
+       (plant-i (aref basements (+ 52 plant (* step basement-i))))
+       (rat-start (* rat-step  rat-i))
+       (plant-start (* plant-step  plant-i))
+       (plant-alive (fminf 0.0 (copysignf 1.0 (aref plants (+ 2 plant-start))))))
+  (update-sight (aref rat-inputs rat-start)
+                (aref rat-inputs (+ 1 rat-start))
+                (aref rat-inputs (+ 2 rat-start))
+                (aref plants (+ 1 plant-start))
+                (aref plants (+ 2 plant-start))
+                rat-inputs
+                (+ 6 rat-start)
+                -29.0 28.0
+                -1.0
+                plant-alive)))
 
 
 
