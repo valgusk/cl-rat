@@ -16,10 +16,12 @@
 
 (defstruct basement rats plants cats walls)
 
-(defun neighbour-tester (d)
+(defun neighbour-tester (d &optional (dist 2))
   #'(lambda (f)
-      (and (< (abs (- (first f) (first d))) 2)
-           (< (abs (- (second f) (second d))) 2))))
+      (and (< (abs (- (getf f 'x) (getf d 'x))) dist)
+           (< (abs (- (getf f 'y) (getf d 'y))) dist)
+           (not (and (equal (getf f 'x) (getf d 'x))
+                     (equal (getf f 'y) (getf d 'y)))))))
 
 (defun connected (dots to &optional tested)
   (if dots
@@ -45,48 +47,84 @@
         (group 0))
     (loop for wall in (append initial-walls random-walls)  do
       (destructuring-bind ((x1 y1) (x2 y2)) wall
-        (let ((by-x (> (abs (- x1 x2)) (abs (- y1 y2))))
-              (min-x (min x1 x2))
-              (min-y (min y1 y2))
-              (max-x (max x1 x2))
-              (max-y (max y1 y2)))
-          (loop for i from (if by-x min-x min-y) to (if by-x max-x max-y)
+        (let ((by-x (> (abs (- x1 x2)) (abs (- y1 y2)))))
+          (loop for i from (if by-x (min x1 x2) (min y1 y2)) to (if by-x (max x1 x2) (max y1 y2))
                 as x = (if by-x i (+ x1 (round (* (- x2 x1) (/ (- i y1) (- y2 y1))))))
                 as y = (if by-x (+ y1 (round (* (- y2 y1) (/ (- i x1) (- x2 x1))))) i) do
-            (let* ((new `(,x ,y nil))
+            (incf group)
+            (let* ((new `(x ,x y ,y grp nil type #\W))
                    (neighbours
                      (remove-if-not (neighbour-tester new) wall-structure))
-                   (same (find-if #'(lambda (b) (equal (subseq b 0 2) new))
+                   (same (find-if #'(lambda (b) (and (equal (getf b 'x) x)
+                                                     (equal (getf b 'y) y)))
                                   wall-structure)))
               (when
-                (notany #'null
-                  (loop for n in neighbours collect
-                    (let* ((same-group
-                             (set-difference (remove n neighbours)
-                                             (remove (third n) neighbours :key #'third)))
-                           (group-connected (connected same-group (list n))))
-                      (equal same-group (remove n group-connected)))))
+                (and
+                 (not same)
+                 (or (or (> x 20) (> y 20)) (member wall initial-walls))
+                 (notany #'null
+                  (loop for n in neighbours
+                        as same-group = (set-difference
+                                          (remove n neighbours)
+                                          (remove-if #'(lambda (n2) (equal (getf n 'grp)
+                                                                           (getf n2 'grp)))
+                                                     neighbours))
+                        as group-connected = (connected same-group (list n))
+                        unless (= (length same-group) (length (remove n group-connected)))
+                        collect nil)))
                 (push new wall-structure)
-                (setf group (1+ group))
                 (loop for c in (connected (remove new wall-structure)
                                           (list (or same new))) do
-                  (setf (cddr c) (list group)))))))))
+                  (setf (getf c 'grp) group))))))))
     wall-structure))
 
-(show-walls (build-walls))
+(defun call-cats (basement)
+  (loop repeat 4 do
+    (loop do
+      (let* ((x (+ 20 (random 80)))
+             (y (+ 20 (random 80)))
+             (cat `(x ,x y ,y type #\C)))
+        (when (notany (neighbour-tester cat 4)
+                      (append (basement-walls basement)
+                              (basement-cats basement)))
+          (push cat (basement-cats basement))
+          (return))))))
 
-(defun show-walls (walls)
-  (let ((rows (loop for i from 0 to 100 collect (make-string 100 :initial-element #\Space))))
-    (loop for w in walls do
-      (setf (elt (nth (first w) rows) (second w)) #\X))
-  (format t "~{~a~^|~%~}" rows)))
+
+(defun grow-plants (basement)
+  (loop repeat 200 do
+    (loop do
+      (let* ((x (random 100))
+             (y (random 100))
+             (plant `(x ,x y ,y type #\@)))
+        (when (or (some (neighbour-tester plant)
+                        (append (basement-walls basement)
+                                (basement-plants basement)))
+                  (< (random 1.0) 0.01))
+          (push plant (basement-plants basement))
+          (return))))))
 
 
 (defun create-random-basement ()
   (let ((basement (make-basement)))
     (setf (basement-walls basement) (build-walls))
     (grow-plants basement)
-    (call-cats basement)))
+    (call-cats basement)
+    basement))
+
+(defun show-objects (basement)
+  (let ((rows (loop for i from 0 to 100 collect (make-string 100 :initial-element #\Space))))
+    (loop for w in (append (basement-plants basement)
+                           (basement-walls basement)
+                           (basement-cats basement)) do
+      (setf (elt (nth (getf w 'x) rows) (getf w 'y)) (getf w 'type)))
+  (format t "~{~a~^|~%~}" rows)))
+
+; (show-objects (create-random-basement))
+
+
+
+
 
 
 (defun basement-available (basement)
@@ -203,6 +241,9 @@
 
 
 
-        )))))
+        )
+
+        (start)
+        (run-rat)))))
 
 (main)
