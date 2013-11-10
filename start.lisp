@@ -290,6 +290,8 @@
 
         (i (rat) (getf rat 'i))
 
+        ;selects function to handle dead rat's
+        ;genetic material while respawn based on balls collected
         (select-respawn (rat top)
           (cond
             ((>= (getf rat 'balls) (ball-threshold top 1/10)) #'revive)
@@ -297,6 +299,7 @@
             ((>= (getf rat 'balls) (ball-threshold top 7/10)) #'mutate)
             (T #'randomize)))
 
+        ;;revive the rat without modification
         (revive (top rat)
           (rat-dissect (i rat) rat-reg-0)
           (memcpy-device-to-host rat-reg-0)
@@ -305,6 +308,7 @@
           (rat-stitch (i rat) rat-reg-2)
           rat)
 
+        ;;replace with a new rat, made by crossing two good rats
         (cross (top rat)
           (let* ((candidates (last top (round (* 4/10 (rat-count)))))
                  (a-rat (nth (random (length candidates)) candidates))
@@ -318,6 +322,7 @@
             (rat-stitch (i rat) rat-reg-2)
             rat))
 
+        ;;replace with a new rat, made by mutating a good rat
         (mutate (top rat)
           (let ((candidates (last top (round (* 5/10 (rat-count))))))
             (rat-dissect (i (nth (random (length candidates)) candidates)) rat-reg-0)
@@ -327,6 +332,7 @@
             (rat-stitch (i rat) rat-reg-2)
             rat))
 
+        ;;replace with a new rat, made by random
         (randomize (top rat)
           (declare (ignore top))
           (init-fill rat-reg-0)
@@ -335,6 +341,7 @@
           (rat-stitch (i rat) rat-reg-2)
           rat)
 
+        ;;put a new rat into some basement
         (position-rat (rat basements)
           (let ((ok-basement (find-available-basement basements)))
             (push (basement-rats ok-basement) rat)
@@ -343,6 +350,7 @@
                   (getf rat 'x) 0.0
                   (getf rat 'y) 0.0)))
 
+        ;;respawn all dead rats in top
         (respawn-rats (top basements)
           (loop for rat in top do
             (when (<= (getf rat 'health) 0)
@@ -355,11 +363,14 @@
               (position-rat rat basements)))
           top)
 
+        ;;get top of rats
         (get-top (rats)
           (sort rats #'(lambda (a b) (< (getf a 'balls) (getf b 'balls)))))
 
+        ;;get possible state stats of a rat
         (rat-stats () '(health hurt hunger balls x y rot))
 
+        ;;get rat stats from device and respawn dead rats
         (update-rats (rats stat-blk basements)
           (let* ((stats (rat-stats))
                  (stat-count (length stats)))
@@ -370,6 +381,7 @@
                 (setf (getf rat stat) (mem-aref stat-blk (+ (* stat-count (i rat)) 0)))))
             (respawn-rats (get-top rats) basements)))
 
+        ;;
         (start ()
           (let* ((rats (loop for i from 0 below (rat-count) collect
                          `(health 1.0 hurt 0.0 x 0.0 y 0.0 rot 0.0 balls 0 i ,i)))
@@ -382,8 +394,7 @@
                                                               50     ;each-rat-i
                                                               300    ;each-plant-i
                                                               4      ;each-cat-i
-                                                              ; = 356
-                                                          ))
+                                                              )); = 356
                                                         basement-wall-count   ;total wall count
                                                         )))
 
