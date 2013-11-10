@@ -19,37 +19,37 @@
 (load "geneural.lisp")
 
 (defkernel get-obj-angle (float ((rot float) (x float) (y float) (x1 float) (y1 float)))
-  (let ((negative-rot (- 0.0 rot))
-        (new-x1 (- (* (- x1 x) (cosf negative-rot))
-                   (* (- y1 y) (sinf negative-rot))))
-        (new-y1 (+ (* (- x1 x) (sinf negative-rot))
-                   (* (- y1 y) (cosf negative-rot)))))
+  (let* ((negative-rot (- 0.0 rot))
+         (new-x1 (- (* (- x1 x) (cosf negative-rot))
+                    (* (- y1 y) (sinf negative-rot))))
+         (new-y1 (+ (* (- x1 x) (sinf negative-rot))
+                    (* (- y1 y) (cosf negative-rot)))))
     (return (atan2f new-x1 new-y1))))
 
 
 (defkernel update-sight (float ((rot float) (x float) (y float) (x1 float) (y1 float)
                                 (where float*) (start-off int) (start-deg float)
                                 (end-deg float) (type float) (active float)))
-  (let ((stp 0.005)
-        (a (get-obj-angle rot x y (- x1 stp) (- y1 stp)))
-        (b (get-obj-angle rot x y (- x1 stp) (+ y1 stp)))
-        (c (get-obj-angle rot x y (+ x1 stp) (- y1 stp)))
-        (d (get-obj-angle rot x y (+ x1 stp) (+ y1 stp)))
-        (min (fminf (fminf a b) (fminf c d)))
-        (max (fmaxf (fmaxf a b) (fmaxf c d)))
-        (dist (/ (sqrt (+ (* (- x1 x) (- x1 x)) (* (- y1 y) (- y1 y)))) 2.0))
-        (min-deg (* 180.0 (/ min 3.141592654)))
-        (max-deg (* 180.0 (/ max 3.141592654)))
-        (deg-diff (fabsf (- max-deg min-deg)))
-        (off start-off))
+  (let* ((stp 0.005)
+         (a (get-obj-angle rot x y (- x1 stp) (- y1 stp)))
+         (b (get-obj-angle rot x y (- x1 stp) (+ y1 stp)))
+         (c (get-obj-angle rot x y (+ x1 stp) (- y1 stp)))
+         (d (get-obj-angle rot x y (+ x1 stp) (+ y1 stp)))
+         (min (fminf (fminf a b) (fminf c d)))
+         (max (fmaxf (fmaxf a b) (fmaxf c d)))
+         (dist (/ (sqrt (+ (* (- x1 x) (- x1 x)) (* (- y1 y) (- y1 y)))) 2.0))
+         (min-deg (* 180.0 (/ min 3.141592654)))
+         (max-deg (* 180.0 (/ max 3.141592654)))
+         (deg-diff (fabsf (- max-deg min-deg)))
+         (off start-off))
     (do ((deg start-deg (+ deg 1.0)))
         ((> deg end-deg))
-      (let ((old-dist (aref where off))
-            (a-diff (copysignf 1.0 (- min-deg deg)))  ;should be < 0
-            (b-diff (copysignf 1.0 (- deg max-deg))) ;should be < 0
-            (is-between (fminf 0.0 (* a-diff b-diff))) ; 0,1
-            (is-shorter (fminf 0.0 (copysignf 1.0 (- old-dist dist)))) ; 0,1
-            (should-be-replaced (* active is-between is-shorter)))
+      (let* ((old-dist (aref where off))
+             (a-diff (copysignf 1.0 (- min-deg deg)))  ;should be < 0
+             (b-diff (copysignf 1.0 (- deg max-deg))) ;should be < 0
+             (is-between (fminf 0.0 (* a-diff b-diff))) ; 0,1
+             (is-shorter (fminf 0.0 (copysignf 1.0 (- old-dist dist)))) ; 0,1
+             (should-be-replaced (* active is-between is-shorter)))
         (set (aref where off) (+ (* old-dist (- 1.0 should-be-replaced))
                                  (* dist should-be-replaced)))
         (set (aref where (+ 1 off))
@@ -65,20 +65,20 @@
                           (max-i  int)))
   (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)))
     (if (< i max-i)
-      (let ((bas-count (* rat-count obj-count))
-            (bas-i (/ i bas-count))
-            (rat-i (/ (- i (* bas-count bas-i)) obj-count))
-            (obj-i (- i (* bas-count bas-i) (* rat-i rat-count)))
-            (rat-start (+ (* bas-i rat-step rat-count) (* rat-i rat-step)))
-            (input-start (* rat-i input-step))
-            (obj-start (+ (* bas-i obj-step obj-count) (* obj-i obj-step)))
-            (rat-x (aref rats rat-start))
-            (rat-y (aref rats (+ 1 rat-start)))
-            (rat-rotation (aref rats (+ 3 rat-start)))
-            (obj-x (aref objs obj-start))
-            (obj-y (aref objs (+ 1 obj-start)))
-            (obj-health (aref objs (+ 2 obj-start)))
-            (obj-alive (fminf 0.0 (copysignf 1.0 obj-health))))
+      (let* ((bas-count (* rat-count obj-count))
+             (bas-i (/ i bas-count))
+             (rat-i (/ (- i (* bas-count bas-i)) obj-count))
+             (obj-i (- i (* bas-count bas-i) (* rat-i rat-count)))
+             (rat-start (+ (* bas-i rat-step rat-count) (* rat-i rat-step)))
+             (input-start (* rat-i input-step))
+             (obj-start (+ (* bas-i obj-step obj-count) (* obj-i obj-step)))
+             (rat-x (aref rats rat-start))
+             (rat-y (aref rats (+ 1 rat-start)))
+             (rat-rotation (aref rats (+ 3 rat-start)))
+             (obj-x (aref objs obj-start))
+             (obj-y (aref objs (+ 1 obj-start)))
+             (obj-health (aref objs (+ 2 obj-start)))
+             (obj-alive (fminf 0.0 (copysignf 1.0 obj-health))))
         (update-sight rat-rotation rat-x rat-y obj-x obj-y inputs input-start
                       -29.0 28.0 ; +- degrees of vision
                       obj-type
@@ -356,17 +356,9 @@
 
               basements)))
 
-
-
-
-
-
-
-
-
         )
-;(start)
-        ;(run-rat)
+        (start)
+         (run-rat)
         ))))
 
 
