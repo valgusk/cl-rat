@@ -51,89 +51,40 @@
 
 
 
-(defkernel light-rats (void ((rat-inputs float*) ; rotation x y health hurt hunger
-                             (basements int*)
-                             (basement-count int)
-                             (rat-step int)
-                             (step int)))                ; 356
-  (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 50rats
-        (rat-a (/ i basement-count 50))            ; 0-49
-        (rat-b (- i (* basement-count rat-a 50)))  ; 0-49 require 2500*basement-count threads?
-        (basement-i (/ i step))
-        (rat-a-i (aref basements (+ 2 rat-a (* step basement-i))))
-        (rat-b-i (aref basements (+ 2 rat-b (* step basement-i))))
-        (rat-a-start (* rat-step  rat-a-i))
-        (rat-b-start (* rat-step  rat-b-i))
-        (rat-b-alive (fminf 0.0 (copysignf 1.0 (aref rat-inputs (+ 3 rat-a-start))))))
-    (update-sight (aref rat-inputs rat-a-start)
-                  (aref rat-inputs (+ 1 rat-a-start))
-                  (aref rat-inputs (+ 2 rat-a-start))
-                  (aref rat-inputs (+ 1 rat-b-start))
-                  (aref rat-inputs (+ 2 rat-b-start))
-                  rat-inputs
-                  (+ 6 rat-a-start)
-                  -29.0 28.0
-                  0.5
-                  rat-b-alive)))
+(defkernel rat-see (void ((inputs float*) (input-step int) (input-off int)
+                          (rats   float*) (rat-step   int) (rat-count int)
+                          (objs   float*) (obj-step   int) (obj-count int) (obj-type float)
+                          (max-i  int)))
+  (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)))
+    (if (< i max-i)
+      (let ((bas-count (* rat-count obj-count))
+            (bas-i (/ i bas-count))
+            (rat-i (/ (- i (* bas-count bas-i)) obj-count))
+            (obj-i (- i (* bas-count bas-i) (* rat-i rat-count)))
+            (rat-start (+ (* bas-i rat-step rat-count) (* rat-i rat-step)))
+            (input-start (* rat-i input-step))
+            (obj-start (+ (* bas-i obj-step obj-count) (* obj-i obj-step)))
+            (rat-x (aref rats rat-start))
+            (rat-y (aref rats (+ 1 rat-start)))
+            (rat-rotation (aref rats (+ 3 rat-start)))
+            (obj-x (aref objs obj-start))
+            (obj-y (aref objs (+ 1 obj-start)))
+            (obj-health (aref objs (+ 2 obj-start)))
+            (obj-alive (fminf 0.0 (copysignf 1.0 obj-health))))
+        (update-sight rat-rotation rat-x rat-y obj-x obj-y inputs input-start
+                      -29.0 28.0 ; +- degrees of vision
+                      obj-type
+                      obj-alive)))))
 
-
-(defkernel light-cats (void ((rat-inputs float*) ; rotation x y health hurt hunger
-                             (basements int*)
-                             (basement-count int)
-                             (cats float*) ; x  y
-                             (cat-step int)
-                             (rat-step int)
-                             (step int)))
- (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 4cats
-       (rat (/ i basement-count 50))                    ; 0-49
-       (cat (- i (* basement-count rat 50)))            ; 0-3
-       (basement-i (/ i step))
-       (rat-i (aref basements (+ 2 rat (* step basement-i))))
-       (cat-i (aref basements (+ 352 cat (* step basement-i))))
-       (rat-start (* rat-step  rat-i))
-       (cat-start (* cat-step  cat-i)))
-  (update-sight (aref rat-inputs rat-start)
-                (aref rat-inputs (+ 1 rat-start))
-                (aref rat-inputs (+ 2 rat-start))
-                (aref cats (+ 1 cat-start))
-                (aref cats (+ 2 cat-start))
-                rat-inputs
-                (+ 6 rat-start)
-                -29.0 28.0
-                -1.0
-                1.0)))
-
-
-(defkernel light-plants (void ((rat-inputs float*) ; rotation x y health hurt hunger
-                               (basements int*)
-                               (basement-count int)
-                               (plants float*) ; x  y health
-                               (plant-step int)
-                               (rat-step int)
-                               (step int)))
- (let ((i (+ (* block-dim-x block-idx-x) thread-idx-x)) ;for each basement x 50rats x 300plants
-       (rat (/ i basement-count 50))                    ; 0-49
-       (plant (- i (* basement-count rat 50)))          ; 0-299
-       (basement-i (/ i step))
-       (rat-i (aref basements (+ 2 rat (* step basement-i))))
-       (plant-i (aref basements (+ 52 plant (* step basement-i))))
-       (rat-start (* rat-step  rat-i))
-       (plant-start (* plant-step  plant-i))
-       (plant-alive (fminf 0.0 (copysignf 1.0 (aref plants (+ 2 plant-start))))))
-  (update-sight (aref rat-inputs rat-start)
-                (aref rat-inputs (+ 1 rat-start))
-                (aref rat-inputs (+ 2 rat-start))
-                (aref plants (+ 1 plant-start))
-                (aref plants (+ 2 plant-start))
-                rat-inputs
-                (+ 6 rat-start)
-                -29.0 28.0
-                -1.0
-                plant-alive)))
-
-
-
-
+(defun update-vision (rat-a-inp inp-step inp-off bas-count &rest visioned)
+  (let ((rat (find-if #'(lambda (o) (= (getf o 'type) 0.5)) visioned )))
+    (loop for o in visioned do
+      (light-objects
+        rat-a-inp inp-step inp-off
+        (getf rat 'blk) (getf rat 'step) (getf rat 'count)
+        (getf o 'blk) (getf o 'step) (getf o 'count) (getf o 'type)
+        :block-dim 128
+        :grid-dim (ceiling (/ (* bas-count (getf rat 'count) (getf o 'count)) 128))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -142,12 +93,13 @@
 
 (defstruct basement rats plants cats walls)
 
-(defun neighbour-tester (d &optional (dist 2))
+(defun neighbour-tester (d &optional (dist 2) same-is-neighbour)
   #'(lambda (f)
       (and (< (abs (- (getf f 'x) (getf d 'x))) dist)
            (< (abs (- (getf f 'y) (getf d 'y))) dist)
-           (not (and (equal (getf f 'x) (getf d 'x))
-                     (equal (getf f 'y) (getf d 'y)))))))
+           (or same-is-neighbour
+               (not (and (equal (getf f 'x) (getf d 'x))
+                         (equal (getf f 'y) (getf d 'y))))))))
 
 (defun connected (dots to &optional tested)
   (if dots
@@ -167,14 +119,22 @@
                          ((0 10)(10 10))))
         (random-walls
           (loop for i from 1 to 4 collect
-            `((,(random 100) ,(random 100))
-              (,(random 100) ,(random 100)))))
+            `((,(+ 2 (random 96)) ,(+ 2 (random 96)))
+              (,(+ 2 (random 96)) ,(+ 2 (random 96))))))
         (wall-structure nil)
+        (border-structure nil)
         (group 0))
+    (loop for x from 0 to 99 do
+      (push `(x ,x y 0 grp nil type #\W) border-structure)
+      (push `(x ,x y 99 grp nil type #\W) border-structure))
+    (loop for y from 1 to 98 do
+      (push `(x ,0 y ,y grp nil type #\W) border-structure)
+      (push `(x ,99 y ,y grp nil type #\W) border-structure))
     (loop for wall in (append initial-walls random-walls)  do
       (destructuring-bind ((x1 y1) (x2 y2)) wall
         (let ((by-x (> (abs (- x1 x2)) (abs (- y1 y2)))))
           (loop for i from (if by-x (min x1 x2) (min y1 y2)) to (if by-x (max x1 x2) (max y1 y2))
+                for j from 1 to 80
                 as x = (if by-x i (+ x1 (round (* (- x2 x1) (/ (- i y1) (- y2 y1))))))
                 as y = (if by-x (+ y1 (round (* (- y2 y1) (/ (- i x1) (- x2 x1))))) i) do
             (incf group)
@@ -202,7 +162,7 @@
                 (loop for c in (connected (remove new wall-structure)
                                           (list (or same new))) do
                   (setf (getf c 'grp) group))))))))
-    wall-structure))
+    (append wall-structure border-structure)))
 
 (defun call-cats (basement)
   (loop repeat 4 do
@@ -210,7 +170,7 @@
       (let* ((x (+ 20 (random 80)))
              (y (+ 20 (random 80)))
              (cat `(x ,x y ,y type #\C health 1.0)))
-        (when (notany (neighbour-tester cat 4)
+        (when (notany (neighbour-tester cat 4 T)
                       (append (basement-walls basement)
                               (basement-cats basement)))
           (push cat (basement-cats basement))
@@ -244,7 +204,7 @@
                            (basement-walls basement)
                            (basement-cats basement)) do
       (setf (elt (nth (getf w 'x) rows) (getf w 'y)) (getf w 'type)))
-  (format t "~{~a~^|~%~}" rows)))
+  (format t "~{~a~^~%~}" rows)))
 
 ; (show-objects (create-random-basement))
 
@@ -386,7 +346,7 @@
                                                         basement-wall-count   ;total wall count
                                                         )))
 
-              nil)))
+              basements)))
 
 
 
@@ -397,9 +357,9 @@
 
 
         )
-
-        (start)
-        (run-rat)))))
+;(start)
+        ;(run-rat)
+        ))))
 
 
 
