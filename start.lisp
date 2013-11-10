@@ -10,18 +10,6 @@
 
 (load "geneural.lisp")
 
-; (with-cuda-context (0)
-;   (with-memory-blocks ((res 'int 1))
-;     (memcpy-host-to-device res)
-;     (defkernel etest (void ((te int*)))
-;       (set (aref te 0) (/ 50 14)))
-;     (etest res :grid-dim `(1 1 1)
-;                :block-dim `(1 1 1))
-;     (memcpy-device-to-host res)
-;     (mem-aref res 0)))
-
-
-
 (defkernel get-obj-angle (float ((rot float) (x float) (y float) (x1 float) (y1 float)))
   (let ((negative-rot (- 0.0 rot))
         (new-x1 (- (* (- x1 x) (cosf negative-rot))
