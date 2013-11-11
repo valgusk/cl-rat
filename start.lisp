@@ -235,10 +235,10 @@
 (defun find-available-basement (basements)
   (let ((ok-basements (loop for b in basements
                          if (< (length (basement-rats b)) 40)
-                         collect (list b)))
+                         collect b))
         (available-basements (loop for b in basements
                                if (< (length (basement-rats b)) 50)
-                               collect (list b))))
+                               collect b)))
     (if (< (length ok-basements) 3)
         (nth (random (length available-basements)) available-basements)
         (nth (random (length ok-basements)) ok-basements))))
@@ -286,8 +286,8 @@
                  (a-rat (nth (random (length candidates)) candidates))
                  (left-candidates (remove a-rat candidates))
                  (b-rat (nth (random (length left-candidates)) left-candidates)))
-            (rat-dissect (getf a-rat 'i) rat-reg-0)
-            (rat-dissect (getf b-rat 'i) rat-reg-1)
+            (rat-dissect (i a-rat) rat-reg-0)
+            (rat-dissect (i b-rat) rat-reg-1)
             (memcpy-device-to-host rat-reg-1 rat-reg-0)
             (rat-crossover rat-reg-2 rat-reg-0 rat-reg-1)
             (memcpy-host-to-device rat-reg-2)
@@ -316,7 +316,7 @@
         ;;put a new rat into some basement
         (position-rat (rat basements)
           (let ((ok-basement (find-available-basement basements)))
-            (push (basement-rats ok-basement) rat)
+            (push rat (basement-rats ok-basement))
             (setf (getf rat 'basement) ok-basement
                   (getf rat 'rot) 0.0
                   (getf rat 'x) 0.0
@@ -349,8 +349,8 @@
             (memcpy-device-to-host stat-blk)
             (loop for rat in rats do
               (loop for stat in stats
-                    for i from 0 below stat-count do
-                (setf (getf rat stat) (mem-aref stat-blk (+ (* stat-count (i rat)) 0)))))
+                    for stat-i from 0 below stat-count do
+                (setf (getf rat stat) (mem-aref stat-blk (+ (* stat-count (i rat)) stat-i)))))
             (respawn-rats (get-top rats) basements)))
 
         ;;
@@ -374,8 +374,8 @@
 
         )
          (start)
-         (run-rat)
-         (validate)
+         ; (run-rat)
+         ; (validate)
         ))))
 
 
