@@ -150,6 +150,18 @@
     (make-all-bricks existing (+ count (list-length existing)))))
 
 
+
+  ; (let ((rows (loop for i from 0 to 99 collect (make-string 100 :initial-element #\.)))
+  ;       (walls (make-walls 10 100
+  ;                `((0 0 ,0 100)
+  ;                  (0 0 ,(* PI 1.5) 100)
+  ;                  (99 0 ,(* PI 1.5) 100)
+  ;                  (0 99 0 100)))))
+  ;     (loop for (x y) in (apply #'append walls) do
+  ;       (setf (elt (nth y rows) x) #\X))
+  ;   (format t "~{~a~^~%~}" rows))
+
+
 (defstruct basement rats plants cats walls)
 
 (defun neighbour-tester (d &optional (dist 2) same-is-neighbour)
