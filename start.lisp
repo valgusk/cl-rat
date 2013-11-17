@@ -114,7 +114,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;wall block
+; define walls, manually defined walls go to existing and
+; should have format: (x y angle length)
 
 (defun make-walls (&optional (count 100) (len 50) (existing nil))
   (labels
@@ -163,77 +164,6 @@
 
 
 (defstruct basement rats plants cats walls)
-
-(defun neighbour-tester (d &optional (dist 2) same-is-neighbour)
-  #'(lambda (f)
-      (and (< (abs (- (getf f 'x) (getf d 'x))) dist)
-           (< (abs (- (getf f 'y) (getf d 'y))) dist)
-           (or same-is-neighbour
-               (not (and (equal (getf f 'x) (getf d 'x))
-                         (equal (getf f 'y) (getf d 'y))))))))
-
-(defun connected (dots to &optional tested)
-  (if dots
-      (let ((con (loop for d in dots append
-                    (when (some (neighbour-tester d) to)
-                          (list d)))))
-        (if con
-            (connected (set-difference dots con) con (append tested to))
-            (append to tested)))
-      (append to tested)))
-
-
-(defun build-walls ()
-  (let ((initial-walls `(((0 0)(0 10))
-                         ((0 0)(10 0))
-                         ((10 0)(10 10))
-                         ((0 10)(10 10))))
-        (random-walls
-          (loop for i from 1 to 4 collect
-            `((,(+ 2 (random 96)) ,(+ 2 (random 96)))
-              (,(+ 2 (random 96)) ,(+ 2 (random 96))))))
-        (wall-structure nil)
-        (border-structure nil)
-        (group 0))
-    (loop for x from 0 to 99 do
-      (push `(x ,x y 0 grp nil type #\W) border-structure)
-      (push `(x ,x y 99 grp nil type #\W) border-structure))
-    (loop for y from 1 to 98 do
-      (push `(x ,0 y ,y grp nil type #\W) border-structure)
-      (push `(x ,99 y ,y grp nil type #\W) border-structure))
-    (loop for wall in (append initial-walls random-walls)  do
-      (destructuring-bind ((x1 y1) (x2 y2)) wall
-        (let ((by-x (> (abs (- x1 x2)) (abs (- y1 y2)))))
-          (loop for i from (if by-x (min x1 x2) (min y1 y2)) to (if by-x (max x1 x2) (max y1 y2))
-                for j from 1 to 80
-                as x = (if by-x i (+ x1 (round (* (- x2 x1) (/ (- i y1) (- y2 y1))))))
-                as y = (if by-x (+ y1 (round (* (- y2 y1) (/ (- i x1) (- x2 x1))))) i) do
-            (incf group)
-            (let* ((new `(x ,x y ,y grp nil type #\W))
-                   (neighbours
-                     (remove-if-not (neighbour-tester new) wall-structure))
-                   (same (find-if #'(lambda (b) (and (equal (getf b 'x) x)
-                                                     (equal (getf b 'y) y)))
-                                  wall-structure)))
-              (when
-                (and
-                 (not same)
-                 (or (or (> x 20) (> y 20)) (member wall initial-walls))
-                 (notany #'null
-                  (loop for n in neighbours
-                        as same-group = (set-difference
-                                          (remove n neighbours)
-                                          (remove-if #'(lambda (n2) (equal (getf n 'grp)
-                                                                           (getf n2 'grp)))
-                                                     neighbours))
-                        as group-connected = (connected same-group (list n))
-                        unless (= (length same-group) (length (remove n group-connected)))
-                        collect nil)))
-                (push new wall-structure)
-                (loop for c in (connected (remove new wall-structure)
-                                          (list (or same new))) do
-                  (setf (getf c 'grp) group))))))))
-    (append wall-structure border-structure)))
 
 (defun call-cats (basement)
   (loop repeat 4 do
