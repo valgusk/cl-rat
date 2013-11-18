@@ -111,12 +111,38 @@
         :grid-dim (ceiling (/ (* bas-count (getf rat 'count) (getf o 'count)) 128))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;    basement generation code    ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; define walls, manually defined walls go to existing and
-; should have format: (x y angle length)
+(defstruct basement rats plants cats walls)
 
+
+
+(defkernel cu-clear-candidates (void ((candidates *int)))
+  ;should set all candidates to 1 (acceptable)
+  )
+
+;leave cells free from objects within distance
+(defkernel cu-free-from (void ((candidates int*) (distance float) (otherwise-p float)
+                               (objs float*) (obj-step int) (obj-count int) (obj-start int)))
+  (let* ((max-i (* obj-count (* 100 100)))
+         (i (+ (* block-dim-x block-idx-x) thread-idx-x))
+         (obj-i (/i 10000)) ;100x100 cells
+         (pos-i (- i (* obj-i 10000)))
+         (x (/ pos-i 100))
+         (y (- pos-i (* 100 x))))
+    (if (< max-i)
+      (let* ((obj-x (aref objects (+ obj-start (* obj-i obj-step))))
+             (obj-y (aref objects (+ (+ obj-start 1) (* obj-i obj-step))))
+             (obj-dist (fmaxf (+ (fabsf (- x obj-x))
+                                 (fabsf (- y obj-y))))))
+        (if (> (copysignf (- distance obj-dist) otherwise-p) 0.0)
+          (set (aref candidates pos-i) 0))))))
+
+;;;;;;;;;;;;;;;;;;;;;;; WALLS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; create walls, manually defined walls go to existing and
+; should have format: (x y angle length)
 (defun make-walls (&optional (count 100) (len 50) (existing nil))
   (labels
     ((wall-def nil (mapcar #'random `(100 100 ,(* PI 2) ,len)))
