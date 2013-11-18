@@ -203,6 +203,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;; PLANTS END ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+;;;;;;;;;;;;;;;;;;;;;;;; BASEMENTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defun make-basements (count &key (wall-count 10) (wall-len 50))
+  (loop for i below count
+        for bound-walls = `((0 0 ,0 100)
+                            (0 0 ,(* PI 1.5) 100)
+                            (99 0 ,(* PI 1.5) 100)
+                            (0 99 0 100))
+        for walls = (apply #'append (make-walls wall-count wall-len bound-walls))
+        collect (make-basement :walls walls)))
+
+(defun basements-walls-to-device (basements wall-blck)
+  (loop for (x y) in (apply #'append (mapcar #'basement-walls basements))
+        for i = 0 then (+ 2 i) do
+          (setf (mem-aref wall-blck i) x (mem-aref wall-blck (1+ i)) y)
+        finally (return (memcpy-host-to-device wall-blck))))
+
 
 
   ; (let ((rows (loop for i from 0 to 99 collect (make-string 100 :initial-element #\.)))
@@ -272,6 +291,12 @@
     (if (< (length ok-basements) 3)
         (nth (random (length available-basements)) available-basements)
         (nth (random (length ok-basements)) ok-basements))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun main ()
   (with-cuda-context (0)
