@@ -18,6 +18,10 @@
 
 (load "geneural.lisp")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;        rat sensor code         ;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;;get object's [x1,y1] angle relative to [x,y] objectš current rotation
 ;;basically project [x1,y1] on [x,y]š angle system
 (defkernel get-obj-angle (float ((rot float) (x float) (y float) (x1 float) (y1 float)))
@@ -175,6 +179,29 @@
          (apply #'make-bricks (or (nth left existing) (wall-def)))
          (and (plusp left) (make-all-bricks existing (1- left))))))
     (make-all-bricks existing (+ count (list-length existing)))))
+
+;;;;;;;;;;;;;;;;;;;;;;; WALLS END ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;; PLANTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defun make-plants (basement plant-count wall-count wall-blck wall-step basement-wall-start)
+  (with-memory-block (candidates-blk 'float (* 100 100))
+      (flet ((filter (dist sign)
+               (cu-free-from
+                 candidates-blk dist sign
+                 wall-blck wall-step wall-count basement-wall-start
+                 :grid-dim (list ,(ceiling (/ (* 100 100 wall-count) 256)) 1 1)
+                 :block-dim '(256 1 1))))
+        (cu-clear-candidates candidates-blk)
+        (filter 0.01 1.0) ;cannot grow on wall
+        (filter 0.1 -1.0) ;should have a wall nearby
+        (memcpy-device-to-host candidates-blk)))))
+
+;;;;;;;;;;;;;;;;;;;;;;; PLANTS END ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 
 
