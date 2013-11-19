@@ -122,9 +122,10 @@
 
 
 
-(defkernel cu-clear-candidates (void ((candidates *int)))
-  ;should set all candidates to 1 (acceptable)
-  )
+(defkernel cu-clear-candidates (void ((candidates int*)))
+  (let* ((max-i (* 100 100))
+         (i (+ (* block-dim-x block-idx-x) thread-idx-x)))
+    (if (< i max-i) (set (aref candidates i) 1))))
 
 ;leave cells free from objects within distance
 (defkernel cu-free-from (void ((candidates int*) (distance float) (otherwise-p float)
