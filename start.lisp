@@ -186,6 +186,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;; PLANTS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun nrandom-pick (count from &optional done &key (default-value nil))
+  (if (plusp count)
+    (let ((random-value (if (cdr from)
+                            (pop (nthcdr (max 1 (random (list-length from))) from))
+                            (pop from))))
+      (nrandom-pick (1- count) from (cons (or random-value default-value) done)))
+      done))
 
 
 (defun make-plants (basement plant-count wall-count wall-blck wall-step basement-wall-start)
@@ -199,7 +206,12 @@
         (cu-clear-candidates candidates-blk)
         (filter 0.01 1.0) ;cannot grow on wall
         (filter 0.1 -1.0) ;should have a wall nearby
-        (memcpy-device-to-host candidates-blk))))
+        (memcpy-device-to-host candidates-blk)
+        (loop for i below 10000
+              for x-y = (list (floor (/ i 100)) (rem i 100))
+              when (plusp (mem-aref candidates-blk i))
+              collect x-y into plants
+              finally (nrandom-pick plant-count plants)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; PLANTS END ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
