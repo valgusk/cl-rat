@@ -194,7 +194,7 @@
                (cu-free-from
                  candidates-blk dist sign
                  wall-blck wall-step wall-count basement-wall-start
-                 :grid-dim (list ,(ceiling (/ (* 100 100 wall-count) 256)) 1 1)
+                 :grid-dim (list (ceiling (/ (* 100 100 wall-count) 256)) 1 1)
                  :block-dim '(256 1 1))))
         (cu-clear-candidates candidates-blk)
         (filter 0.01 1.0) ;cannot grow on wall
