@@ -134,9 +134,9 @@
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/i 10000)) ;100x100 cells
          (pos-i (- i (* obj-i 10000)))
-         (x (/ pos-i 100))
-         (y (- pos-i (* 100 x))))
-    (if (< max-i)
+         (x (to-float (/ pos-i 100)))
+         (y (to-float (- pos-i (* 100 x)))))
+    (if (< i max-i)
       (let* ((obj-x (aref objects (+ obj-start (* obj-i obj-step))))
              (obj-y (aref objects (+ (+ obj-start 1) (* obj-i obj-step))))
              (obj-dist (fmaxf (+ (fabsf (- x obj-x))
@@ -189,7 +189,7 @@
 
 
 (defun make-plants (basement plant-count wall-count wall-blck wall-step basement-wall-start)
-  (with-memory-block (candidates-blk 'float (* 100 100))
+  (with-memory-block (candidates-blk 'int (* 100 100))
       (flet ((filter (dist sign)
                (cu-free-from
                  candidates-blk dist sign
@@ -199,7 +199,7 @@
         (cu-clear-candidates candidates-blk)
         (filter 0.01 1.0) ;cannot grow on wall
         (filter 0.1 -1.0) ;should have a wall nearby
-        (memcpy-device-to-host candidates-blk)))))
+        (memcpy-device-to-host candidates-blk))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; PLANTS END ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

@@ -12,6 +12,7 @@
 (setf (getf cl-cuda::+built-in-functions+ 'cosf) '(((float) float nil "cosf")))
 (setf (getf cl-cuda::+built-in-functions+ 'atan2f) '(((float float) float nil "atan2f")))
 (setf (getf cl-cuda::+built-in-functions+ 'to-int) '(((float) int nil "__float2int_rd")))
+(setf (getf cl-cuda::+built-in-functions+ 'to-float) '(((int) float nil "__int2float_rd")))
 (setf (getf cl-cuda::+built-in-functions+ 'copysignf) '(((float float) float nil "copysignf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
