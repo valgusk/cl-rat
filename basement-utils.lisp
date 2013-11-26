@@ -1,0 +1,30 @@
+(defkernel cu-clear-candidates (void ((candidates int*)))
+  (let* ((max-i (* 100 100))
+         (i (+ (* block-dim-x block-idx-x) thread-idx-x)))
+    (if (< i max-i) (set (aref candidates i) 1))))
+
+;filter cells free from objects within distance
+(defkernel cu-free-from (void ((candidates int*) (distance float) (otherwise-p float)
+                               (objs float*) (obj-step int) (obj-count int) (obj-start int)))
+  (let* ((max-i (* obj-count (* 100 100)))
+         (i (+ (* block-dim-x block-idx-x) thread-idx-x))
+         (obj-i (/i 10000)) ;100x100 cells
+         (pos-i (- i (* obj-i 10000)))
+         (x (to-float (/ pos-i 100)))
+         (y (to-float (- pos-i (* 100 x)))))
+    (if (< i max-i)
+      (let* ((obj-x (aref objects (+ obj-start (* obj-i obj-step))))
+             (obj-y (aref objects (+ (+ obj-start 1) (* obj-i obj-step))))
+             (obj-dist (fmaxf (+ (fabsf (- x obj-x))
+                                 (fabsf (- y obj-y))))))
+        (if (> (copysignf (- distance obj-dist) otherwise-p) 0.0)
+          (set (aref candidates pos-i) 0))))))
+
+;;destructively picks n elements from lst
+(defun nrandom-pick (n lst &optional done &key (default (lambda ())))
+  (if (plusp n)
+    (let ((random-value (if (cdr lst)
+                            (pop (nthcdr (max 1 (random (list-length lst))) lst))
+                            (pop lst))))
+      (nrandom-pick (1- n) lst (cons (or random-value (funcall default)) done)))
+      done))
