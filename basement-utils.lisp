@@ -28,3 +28,22 @@
                             (pop lst))))
       (nrandom-pick (1- n) lst (cons (or random-value (funcall default)) done)))
       done))
+
+;;
+(defmacro with-wilters (filter-datas &rest body)
+  `(with-memory-block (candidates-blk 'int (* 100 100))
+     (labels ,(loop for (filter-name count blck step start) in filter-datas collect
+                `(,filter-name (dist sign)
+                    (cu-free-from
+                      candidates-blk dist sign
+                      ,blck ,step ,count ,start
+                      :grid-dim (list (ceiling (/ (* 100 100 ,(count) 256)) 1 1)
+                      :block-dim '(256 1 1)))))
+        (cu-clear-candidates candidates-blk)
+        ,@body
+        (memcpy-device-to-host candidates-blk)
+        (loop for i below 10000
+              for x-y = (list (floor (/ i 100)) (rem i 100))
+              when (plusp (mem-aref candidates-blk i))
+              collect x-y into ret
+              finally (return (nrandom-pick obj-count ret))))))
