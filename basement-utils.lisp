@@ -30,7 +30,7 @@
       done))
 
 ;;
-(defmacro with-wilters (filter-datas &rest body)
+(defmacro with-position-filters (filter-count filter-datas &rest body)
   `(with-memory-block (candidates-blk 'int (* 100 100))
      (labels ,(loop for (filter-name count blck step start) in filter-datas collect
                 `(,filter-name (dist sign)
@@ -46,4 +46,4 @@
               for x-y = (list (floor (/ i 100)) (rem i 100))
               when (plusp (mem-aref candidates-blk i))
               collect x-y into ret
-              finally (return (nrandom-pick obj-count ret))))))
+              finally (return (nrandom-pick ,filter-count ret))))))
