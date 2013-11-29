@@ -15,9 +15,10 @@
     (if (< i max-i)
       (let* ((obj-x (aref objects (+ obj-start (* obj-i obj-step))))
              (obj-y (aref objects (+ (+ obj-start 1) (* obj-i obj-step))))
+             (obj-hp (aref objects (+ (+ obj-start 2) (* obj-i obj-step))))
              (obj-dist (fmaxf (+ (fabsf (- x obj-x))
                                  (fabsf (- y obj-y))))))
-        (if (> (copysignf (- distance obj-dist) otherwise-p) 0.0)
+        (if (and (> obj-hp 0.0) (> (copysignf (- distance obj-dist) otherwise-p) 0.0))
           (set (aref candidates pos-i) 0))))))
 
 ;;destructively picks n elements from lst
