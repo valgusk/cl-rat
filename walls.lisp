@@ -35,8 +35,10 @@
 
 
 ;; move basement data to gfx card
-(defun basements-walls-to-device (basements wall-blck)
+(defun basements-walls-to-device (basements wall-blck wall-step)
   (loop for (x y) in (apply #'append (mapcar #'basement-walls basements))
-        for i = 0 then (+ 2 i) do
-          (setf (mem-aref wall-blck i) x (mem-aref wall-blck (1+ i)) y)
+        for i = 0 then (+ wall-step i) do
+          (setf (mem-aref wall-blck i) (coerce x 'float)
+                (mem-aref wall-blck (1+ i)) (coerce y 'float)
+                (mem-aref wall-blck i) 1.0) ;health
         finally (return (memcpy-host-to-device wall-blck))))
