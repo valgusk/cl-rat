@@ -92,5 +92,6 @@
         rat-a-inp inp-step inp-off
         (getf rat 'blk) (getf rat 'step) (getf rat 'count)
         (getf o 'blk) (getf o 'step) (getf o 'count) (getf o 'type)
+        (* bas-count (getf o 'count) (getf rat 'count))
         :block-dim 128
         :grid-dim (ceiling (/ (* bas-count (getf rat 'count) (getf o 'count)) 128))))))

@@ -38,8 +38,8 @@
                     (cu-free-from
                       candidates-blk dist sign
                       ,blck ,step ,count ,start
-                      :grid-dim (list (ceiling (/ (* 100 100 ,(count) 256)) 1 1)
-                      :block-dim '(256 1 1)))))
+                      :grid-dim (list (ceiling (/ (* 100 100 ,count 256))) 1 1)
+                      :block-dim '(256 1 1))))
         (cu-clear-candidates candidates-blk)
         ,@body
         (memcpy-device-to-host candidates-blk)
