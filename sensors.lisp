@@ -81,7 +81,9 @@
              (obj-health (aref objs (+ 2 obj-start)))
              (obj-alive (fminf 0.0 (copysignf 1.0 obj-health))))
         (update-sight rat-rotation rat-x rat-y obj-x obj-y inputs input-start
-                      -29.0 28.0 ; +- degrees of vision
+                      -29.0 28.0 ; +- degrees of vision, total of 58 degrees,
+                                 ; which leaves 6 inputs for other info in
+                                 ; rats 64 inputs
                       obj-type
                       obj-alive)))))
 
