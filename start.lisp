@@ -19,6 +19,33 @@
 (load "geneural.lisp")
 (load "sensors.lisp")
 (load "basement.lisp")
+(print "done")
+
+;;list of data available for rats on device
+(defvar +rat-inputs+ ;rats should not know their balls value, so not included here
+  `(x y health hurt hunger rot 
+      ,@(loop for i from -28 to 28 
+              collect (read-from-string (format nil "vision-distance-~a" i))
+              collect (read-from-string (format nil "vision-object-type-~a" i)))))
+
+
+
+
+(defmacro with-stats (rat-count wall-count cat-count plant-count &rest body)
+  ;;lists of data that should be available on device about objects
+  (let ((rat-stats '(x y health))
+	    (wall-stats '(x y health))
+	    (cat-stats '(x y health))
+	    (plant-stats '(x y health)))
+  	`(let ((rat-step ,(length (rat-stats)))
+           (wall-step ,(length (wall-stats)))
+           (cat-step ,(length (cat-stats)))
+           (plant-step ,(length (plant-stats))))
+      	(with-memory-blocks ((rat-stat-blk 'float (* rat-step ,rat-count))
+                             (wall-stat-blk 'float (* wall-step ,wall-count))
+                             (cat-stat-blk 'float (* cat-step ,cat-count))
+                             (plant-stat-blk 'float (* plant-step ,plant-count))))
+       	  ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
