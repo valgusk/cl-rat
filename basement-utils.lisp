@@ -3,8 +3,8 @@
 
 
 ;filter cells free from objs within distance
-(defkernel cu-free-from (void ((candidates int*) (distance float) (otherwise-p float)
-                               (objs float*) (obj-step int) (obj-count int) (obj-start int)))
+(defkernel cu-free-from (void ((candidates int*) (min-dist float) (objs float*)
+                               (obj-step int) (obj-count int) (obj-start int)))
   (let* ((max-i (* obj-count (* 100 100)))
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
@@ -18,7 +18,7 @@
              (obj-dist (fmaxf (fabsf (- (/ (to-float x) 100.0) obj-x))
                               (fabsf (- (/ (to-float y) 100.0) obj-y)))))
         (if (> obj-hp 0.0)
-          (if (> (* (- distance obj-dist) otherwise-p) 0.0)
+          (if (> (- min-dist obj-dist) 0.0)
             (set (aref candidates pos-i) 0)))))))
 
 ;;destructively picks n elements from lst
@@ -36,7 +36,7 @@
      (labels ,(loop for (filter-name count blck step start) in filter-datas collect
                 `(,filter-name (dist sign)
                     (cu-free-from
-                      candidates-blk dist sign
+                      candidates-blk dist
                       ,blck ,step ,count ,start
                       :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
                       :block-dim '(256 1 1))))
