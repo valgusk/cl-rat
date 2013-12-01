@@ -18,7 +18,7 @@
              (obj-dist (fmaxf (fabsf (- (to-float x) obj-x))
                               (fabsf (- (to-float y) obj-y)))))
         (if (> obj-hp 0.0)
-          (if (> (copysignf (- distance obj-dist) otherwise-p) 0.0)
+          (if (> (* (- distance obj-dist) otherwise-p) 0.0)
             (set (aref candidates pos-i) 0)))))))
 
 ;;destructively picks n elements from lst
