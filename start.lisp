@@ -47,6 +47,28 @@
                              (plant-blk 'float (* plant-step ,plant-count)))
        	  ,@body))))
 
+(with-cuda-context (0)
+	 (with-neural-networks rat 2
+		                   ;name   inputs                outputs
+		                   ((A     ((nil 0 64) (G 64 96))    96)
+		                    (B     ((A 0 96))                96)
+		                    (C     ((B 0 96))                96)
+		                    (MEM-D ((C 0 96))                32)
+		                    (E     ((C 0 96) (MEM-D 0 32))   96)
+		                    (F     ((E 0 96))                96)
+		                    (G     ((F 0 96))                96))
+       (let* ((rats-per-basement 50)
+              (cats-per-basement 5)
+              (plants-per-basement 200)
+              (wall-lines-per-basement 10)
+              (basement-count (ceiling (/ (rat-count) rats-per-basement)))
+              (basements (make-basements basement-count :wall-count wall-lines-per-basement))
+              (wall-count (loop for b in basements sum (list-length (basement-walls b)))))
+       (with-stats (rat-count) wall-count (* cats-per-basement basement-count) (* plants-per-basement basement-count)
+          ;move walls to device, not needed to modify anymore
+          (basements-walls-to-device basements wall-blk wall-step)
+     	  ))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
