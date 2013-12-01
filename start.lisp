@@ -41,11 +41,11 @@
            (wall-step ,(length wall-stats))
            (cat-step ,(length cat-stats))
            (plant-step ,(length plant-stats)))
-      	(with-memory-blocks ((rat-stat-blk 'float (* rat-step ,rat-count))
-                             (wall-stat-blk 'float (* wall-step ,wall-count))
-                             (cat-stat-blk 'float (* cat-step ,cat-count))
-                             (plant-stat-blk 'float (* plant-step ,plant-count))))
-       	  ,@body)))
+      	(with-memory-blocks ((rat-blk 'float (* rat-step ,rat-count))
+                             (wall-blk 'float (* wall-step ,wall-count))
+                             (cat-blk 'float (* cat-step ,cat-count))
+                             (plant-blk 'float (* plant-step ,plant-count)))
+       	  ,@body))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
