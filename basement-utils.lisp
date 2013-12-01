@@ -9,14 +9,14 @@
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
          (pos-i (- i (* obj-i 10000)))
-         (x (to-float (/ pos-i 100))) ;incorrect value??????????????????????????
-         (y (to-float (- pos-i (* 100 (/ pos-i 100))))))
+         (x (/ pos-i 100)) ;incorrect value??????????????????????????
+         (y (- pos-i (* 100 x))))
     (if (< i max-i)
       (let* ((obj-x (aref objs (+ obj-start (* obj-i obj-step))))
              (obj-y (aref objs (+ (+ obj-start 1) (* obj-i obj-step))))
              (obj-hp (aref objs (+ (+ obj-start 2) (* obj-i obj-step))))
-             (obj-dist (fmaxf (fabsf (- x obj-x))
-                              (fabsf (- y obj-y)))))
+             (obj-dist (fmaxf (fabsf (- (to-float x) obj-x))
+                              (fabsf (- (to-float y) obj-y)))))
         (if (> obj-hp 0.0)
           (if (> (copysignf (- distance obj-dist) otherwise-p) 0.0)
             (set (aref candidates pos-i) 0)))))))
