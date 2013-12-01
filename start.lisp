@@ -51,6 +51,12 @@
           (mapcar #'fill-with-zeros (list rat-blk wall-blk cat-blk plant-blk))
        	  ,@body))))
 
+(defun print-blk (blk)
+  (memcpy-device-to-host blk)
+  (loop for i below (cl-cuda::memory-block-cuda-length blk)
+    collect (mem-aref blk i) into results
+    finally (print results)))
+
 (defun main nil
   (with-cuda-context (0)
   	 (with-neural-networks rat 2
