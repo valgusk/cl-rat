@@ -47,7 +47,7 @@
               for x-y = (list (floor (/ i 100)) (rem i 100))
               when (plusp (mem-aref candidates-blk i))
               collect x-y into ret
-              finally (return (nrandom-pick ,filter-count ret))))))
+              finally (return ret)))))
 
 ;;visualize object placements
 (defun show-basement (basement)
