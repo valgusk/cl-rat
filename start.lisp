@@ -5,7 +5,7 @@
 (ql:quickload :cl-glut)
 (ql:quickload :cl-glu)
 (in-package :cl-cuda)
-(setf *nvcc-options* (list "-arch=sm_20" "-m32"))
+(setf *nvcc-options* (list "-arch=sm_30" "-m32"))
 
 (in-package :cl-user)
 (defpackage genetics
