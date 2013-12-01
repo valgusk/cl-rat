@@ -38,7 +38,7 @@
 (defun basements-walls-to-device (basements wall-blck wall-step)
   (loop for (x y) in (apply #'append (mapcar #'basement-walls basements))
         for i = 0 then (+ wall-step i) do
-          (setf (mem-aref wall-blck i) (coerce x 'float)
-                (mem-aref wall-blck (1+ i)) (coerce y 'float)
+          (setf (mem-aref wall-blck i) (/ (coerce x 'float) 100)
+                (mem-aref wall-blck (1+ i)) (/ (coerce y 'float) 100)
                 (mem-aref wall-blck (+ 2 i)) 1.0) ;health
         finally (return (memcpy-host-to-device wall-blck))))
