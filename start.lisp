@@ -80,11 +80,15 @@
             (basements-walls-to-device basements wall-blk wall-step)
             ;move cats to device, not needed to modify anymore
             (loop for b in basements
+                  for plant-start = 0 then (+ plant-start plants-per-basement)
                  	for wall-start = 0 then (+ wall-start b-wall-count)
                   for b-wall-count = (list-length (basement-walls b)) do
               	(progn
                  	  (setf (basement-cats b)
                      	(call-cats cats-per-basement b-wall-count wall-blk wall-step wall-start))
+                    (setf (basement-plants b)
+                      (grow-plants plants-per-basement b-wall-count wall-blk wall-step wall-start
+                                   plant-blk plant-step plant-start))
                     (show-basement b)))
             ;(basements-cats-to-device basements wall-blk wall-step)
 
