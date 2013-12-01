@@ -51,37 +51,38 @@
           (mapcar #'fill-with-zeros (list rat-blk wall-blk cat-blk plant-blk))
        	  ,@body))))
 
-(with-cuda-context (0)
-	 (with-neural-networks rat 2
-		                   ;name   inputs                outputs
-		                   ((A     ((nil 0 64) (G 64 96))    96)
-		                    (B     ((A 0 96))                96)
-		                    (C     ((B 0 96))                96)
-		                    (MEM-D ((C 0 96))                32)
-		                    (E     ((C 0 96) (MEM-D 0 32))   96)
-		                    (F     ((E 0 96))                96)
-		                    (G     ((F 0 96))                96))
-       (let* ((rats-per-basement 50)
-              (cats-per-basement 500)
-              (plants-per-basement 200)
-              (wall-lines-per-basement 80)
-              (basement-count (ceiling (/ (rat-count) rats-per-basement)))
-              (basements (make-basements basement-count :wall-count wall-lines-per-basement))
-              (wall-count (loop for b in basements sum (list-length (basement-walls b)))))
-       (with-stats (rat-count) wall-count (* cats-per-basement basement-count) (* plants-per-basement basement-count)
-          ;move walls to device, not needed to modify anymore
-          (basements-walls-to-device basements wall-blk wall-step)
-          ;move cats to device, not needed to modify anymore
-          (loop for b in basements
-               	for wall-start = 0 then (+ wall-start b-wall-count)
-                for b-wall-count = (list-length (basement-walls b)) do
-            	(progn
-               	  (setf (basement-cats b)
-                   	(call-cats cats-per-basement wall-count wall-blk wall-step wall-start))
-                  (show-basement b)))
-          ;(basements-cats-to-device basements wall-blk wall-step)
-          
-     	  ))))
+(defun main nil
+  (with-cuda-context (0)
+  	 (with-neural-networks rat 2
+  		                   ;name   inputs                outputs
+  		                   ((A     ((nil 0 64) (G 64 96))    96)
+  		                    (B     ((A 0 96))                96)
+  		                    (C     ((B 0 96))                96)
+  		                    (MEM-D ((C 0 96))                32)
+  		                    (E     ((C 0 96) (MEM-D 0 32))   96)
+  		                    (F     ((E 0 96))                96)
+  		                    (G     ((F 0 96))                96))
+         (let* ((rats-per-basement 50)
+                (cats-per-basement 500)
+                (plants-per-basement 200)
+                (wall-lines-per-basement 80)
+                (basement-count (ceiling (/ (rat-count) rats-per-basement)))
+                (basements (make-basements basement-count :wall-count wall-lines-per-basement))
+                (wall-count (loop for b in basements sum (list-length (basement-walls b)))))
+         (with-stats (rat-count) wall-count (* cats-per-basement basement-count) (* plants-per-basement basement-count)
+            ;move walls to device, not needed to modify anymore
+            (basements-walls-to-device basements wall-blk wall-step)
+            ;move cats to device, not needed to modify anymore
+            (loop for b in basements
+                 	for wall-start = 0 then (+ wall-start b-wall-count)
+                  for b-wall-count = (list-length (basement-walls b)) do
+              	(progn
+                 	  (setf (basement-cats b)
+                     	(call-cats cats-per-basement b-wall-count wall-blk wall-step wall-start))
+                    (show-basement b)))
+            ;(basements-cats-to-device basements wall-blk wall-step)
+
+       	  )))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;     main application code      ;;;;;;;;;;;;;;;;;;;;;;;;
