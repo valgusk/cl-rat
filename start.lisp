@@ -24,8 +24,8 @@
 
 ;;list of data available for rats on device
 (defvar +rat-inputs+ ;rats should not know their balls value, so not included here
-  `(x y health hurt hunger rot 
-      ,@(loop for i from -28 to 28 
+  `(x y health hurt hunger rot
+      ,@(loop for i from -28 to 28
               collect (read-from-string (format nil "vision-distance-~a" i))
               collect (read-from-string (format nil "vision-object-type-~a" i)))))
 
