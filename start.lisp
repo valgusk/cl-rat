@@ -1,3 +1,4 @@
+(setq *PRINT-PRETTY* T)
 (ql:quickload :cl-cuda)
 (ql:quickload :imago)
 (ql:quickload :CL-STOPWATCH)
@@ -29,6 +30,8 @@
               collect (read-from-string (format nil "vision-object-type-~a" i)))))
 
 
+(defun fill-with-zeros (blk)
+  (init-fill blk #'(lambda () 0.0)))
 
 
 (defmacro with-stats (rat-count wall-count cat-count plant-count &rest body)
@@ -45,6 +48,7 @@
                              (wall-blk 'float (* wall-step ,wall-count))
                              (cat-blk 'float (* cat-step ,cat-count))
                              (plant-blk 'float (* plant-step ,plant-count)))
+          (mapcar #'fill-with-zeros (list rat-blk wall-blk cat-blk plant-blk))
        	  ,@body))))
 
 (with-cuda-context (0)
@@ -71,8 +75,10 @@
           (loop for b in basements
                	for wall-start = 0 then (+ wall-start b-wall-count)
                 for b-wall-count = (list-length (basement-walls b)) do
-            	(setf (basement-cats b)
-                   	  (call-cats cats-per-basement wall-count wall-blk wall-step wall-start)))
+            	(progn
+               	  (setf (basement-cats b)
+                   	(call-cats cats-per-basement wall-count wall-blk wall-step wall-start))
+                  (show-basement b)))
           ;(basements-cats-to-device basements wall-blk wall-step)
           
      	  ))))

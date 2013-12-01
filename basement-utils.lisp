@@ -1,7 +1,6 @@
-(defkernel cu-clear-candidates (void ((candidates int*)))
-  (let* ((max-i (* 100 100))
-         (i (+ (* block-dim-x block-idx-x) thread-idx-x)))
-    (if (< i max-i) (set (aref candidates i) 1))))
+(defun clear-candidates (candidates-blk)
+  (init-fill candidates-blk #'(lambda () 1)))
+
 
 ;filter cells free from objs within distance
 (defkernel cu-free-from (void ((candidates int*) (distance float) (otherwise-p float)
@@ -10,7 +9,7 @@
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
          (pos-i (- i (* obj-i 10000)))
-         (x (to-float (/ pos-i 100)))
+         (x (to-float (/ pos-i 100))) ;incorrect value??????????????????????????
          (y (to-float (- pos-i (* 100 (/ pos-i 100))))))
     (if (< i max-i)
       (let* ((obj-x (aref objs (+ obj-start (* obj-i obj-step))))
@@ -39,9 +38,9 @@
                     (cu-free-from
                       candidates-blk dist sign
                       ,blck ,step ,count ,start
-                      :grid-dim (list (ceiling (/ (* 100 100 ,count 256))) 1 1)
+                      :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
                       :block-dim '(256 1 1))))
-        (cu-clear-candidates candidates-blk)
+        (clear-candidates candidates-blk)
         ,@body
         (memcpy-device-to-host candidates-blk)
         (loop for i below 10000
@@ -49,3 +48,12 @@
               when (plusp (mem-aref candidates-blk i))
               collect x-y into ret
               finally (return (nrandom-pick ,filter-count ret))))))
+
+;;visualize object placements
+(defun show-basement (basement)
+  (let ((rows (loop for i below 100 collect (make-string 100 :initial-element #\Space))))
+    (loop for type-positions in (list #'basement-walls #'basement-cats #'basement-rats #'basement-plants)
+          for type in '(#\# #\. #\r #\Y) do
+      (loop for (x y) in (funcall type-positions basement)
+        when  (and x y)  do (setf (elt (nth x rows) y) type)))
+    (format t "~%~{~a~^~%~}~%" rows)))
