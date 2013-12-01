@@ -67,6 +67,14 @@
        (with-stats (rat-count) wall-count (* cats-per-basement basement-count) (* plants-per-basement basement-count)
           ;move walls to device, not needed to modify anymore
           (basements-walls-to-device basements wall-blk wall-step)
+          ;move cats to device, not needed to modify anymore
+          (loop for b in basements
+               	for wall-start = 0 then (+ wall-start b-wall-count)
+                for b-wall-count = (list-length (basement-walls b)) do
+            	(setf (basement-cats b)
+                   	  (call-cats cats-per-basement wall-count wall-blk wall-step wall-start)))
+          ;(basements-cats-to-device basements wall-blk wall-step)
+          
      	  ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
