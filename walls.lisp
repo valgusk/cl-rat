@@ -40,5 +40,5 @@
         for i = 0 then (+ wall-step i) do
           (setf (mem-aref wall-blck i) (coerce x 'float)
                 (mem-aref wall-blck (1+ i)) (coerce y 'float)
-                (mem-aref wall-blck i) 1.0) ;health
+                (mem-aref wall-blck (+ 2 i)) 1.0) ;health
         finally (return (memcpy-host-to-device wall-blck))))
