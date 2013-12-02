@@ -12,7 +12,7 @@
 (defkernel cu-count-alive (void ((blk float*) (count int) (step int) (start int) (result int*)))
   (let* ((i (+ (* block-dim-x block-idx-x) thread-idx-x)))
     (if (< i count)
-      (if (> (mem-aref blk (+ 2 (+ start (* step i)))) 0.0)
+      (if (> (aref blk (+ 2 (+ start (* step i)))) 0.0)
         (atomic-add (pointer (aref result 0)) -1)))))
 
 (defun count-alive (blk count step start)
@@ -59,7 +59,9 @@
   `(with-memory-block (candidates-blk 'int (* 100 100))
      (labels ,(loop for (filter-name count blck step start) in filter-datas collect
                 `(,filter-name (min-dist max-dist)
-                    (cu-reset-positive-to-val candidates-blk ,count
+                    (cu-reset-positive-to-val
+                      candidates-blk
+                      (count-alive ,blck ,count ,step ,start)
                       :grid-dim '(40 1 1)
                       :block-dim '(256 1 1))
                     (cu-free-from
