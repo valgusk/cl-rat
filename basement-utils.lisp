@@ -9,12 +9,16 @@
       (if (> (aref candidates i) 0)
         (set (aref candidates i) val)))))
 
+;;kernel helper to count alive objects on device side
 (defkernel cu-count-alive (void ((blk float*) (count int) (step int) (start int) (result int*)))
   (let* ((i (+ (* block-dim-x block-idx-x) thread-idx-x)))
     (if (< i count)
       (if (> (aref blk (+ 2 (+ start (* step i)))) 0.0)
         (atomic-add (pointer (aref result 0)) -1)))))
 
+;;count objects that are alive
+;;necessary for cu-free-from filter max-dist
+;;as it decreases this count every time that dist is greater than max-dist
 (defun count-alive (blk count step start)
   (with-memory-block (count-blk 'int 1)
     (init-fill count-blk)
