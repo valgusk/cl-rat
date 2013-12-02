@@ -57,7 +57,7 @@
         (memcpy-device-to-host candidates-blk)
         (loop for i below 10000
               for x-y = (list (floor (/ i 100)) (rem i 100))
-              when (plusp (print (mem-aref candidates-blk i)))
+              when (plusp (mem-aref candidates-blk i))
               collect x-y into ret
               finally (return (nrandom-pick ,filter-count ret))))))
 
