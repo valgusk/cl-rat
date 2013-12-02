@@ -1,6 +1,13 @@
 (defun clear-candidates (candidates-blk &optional (init 1))
   (init-fill candidates-blk #'(lambda () init)))
 
+;;filter cells free from objs within distance
+(defkernel cu-reset-positive-to-val (void ((candidates int*) (val int)))
+  (let* ((max-i (* 100 100))
+         (i (+ (* block-dim-x block-idx-x) thread-idx-x)))
+    (if (< i max-i)
+      (if (> (aref candidates i) 0)
+        (set (aref candidates i) val)))))
 
 ;filter cells free from objs within distance
 (defkernel cu-free-from (void ((candidates int*) (min-dist float) (max-dist float)
@@ -37,17 +44,20 @@
   `(with-memory-block (candidates-blk 'int (* 100 100))
      (labels ,(loop for (filter-name count blck step start) in filter-datas collect
                 `(,filter-name (min-dist max-dist)
+                    (cu-reset-positive-to-val candidates-blk ,count
+                      :grid-dim '(40 1 1)
+                      :block-dim '(256 1 1))
                     (cu-free-from
                       candidates-blk min-dist max-dist
                       ,blck ,step ,count ,start
                       :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
                       :block-dim '(256 1 1))))
-        (clear-candidates candidates-blk ,filter-count)
+        (clear-candidates candidates-blk)
         ,@body
         (memcpy-device-to-host candidates-blk)
         (loop for i below 10000
               for x-y = (list (floor (/ i 100)) (rem i 100))
-              when (plusp (mem-aref candidates-blk i))
+              when (plusp (print (mem-aref candidates-blk i)))
               collect x-y into ret
               finally (return (nrandom-pick ,filter-count ret))))))
 
