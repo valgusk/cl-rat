@@ -17,7 +17,7 @@
         (atomic-add (pointer (aref result 0)) -1)))))
 
 ;;count objects that are alive
-;;necessary for cu-free-from filter max-dist
+;;necessary for cu-filter filter max-dist
 ;;as it decreases this count every time that dist is greater than max-dist
 (defun count-alive (blk count step start)
   (with-memory-block (count-blk 'int 1)
@@ -29,8 +29,8 @@
     (mem-aref count-blk 0)))
 
 ;filter cells free from objs within distance
-(defkernel cu-free-from (void ((candidates int*) (min-dist float) (max-dist float)
-                               (objs float*) (obj-step int) (obj-count int) (obj-start int)))
+(defkernel cu-filter (void ((candidates int*) (min-dist float) (max-dist float)
+                            (objs float*) (obj-step int) (obj-count int) (obj-start int)))
   (let* ((max-i (* obj-count (* 100 100)))
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
@@ -68,7 +68,7 @@
                       (count-alive ,blck ,count ,step ,start)
                       :grid-dim '(40 1 1)
                       :block-dim '(256 1 1))
-                    (cu-free-from
+                    (cu-filter
                       candidates-blk min-dist max-dist
                       ,blck ,step ,count ,start
                       :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
