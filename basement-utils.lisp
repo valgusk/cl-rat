@@ -9,6 +9,19 @@
       (if (> (aref candidates i) 0)
         (set (aref candidates i) val)))))
 
+(defkernel cu-count-alive (void ((blk float*) (count int) (step int) (start int) (result int*)))
+  (let* ((i (+ (* block-dim-x block-idx-x) thread-idx-x)))
+    (if (< i count)
+      (if (> (mem-aref blk (+ 2 (+ start (* step i)))) 0.0)
+        (atomic-add (pointer (aref result 0)) -1)))))
+
+(defun count-alive (blk count step start)
+  (with-memory-block (count-blk 'int 1)
+    (init-fill count-blk)
+    (cu-count-alive blk count step start count-blk)
+    (memcpy-device-to-host count-blk)
+    (mem-aref count-blk 0)))
+
 ;filter cells free from objs within distance
 (defkernel cu-free-from (void ((candidates int*) (min-dist float) (max-dist float)
                                (objs float*) (obj-step int) (obj-count int) (obj-start int)))
