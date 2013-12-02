@@ -1,5 +1,5 @@
-(defun clear-candidates (candidates-blk)
-  (init-fill candidates-blk #'(lambda () 1)))
+(defun clear-candidates (candidates-blk &optional (init 1))
+  (init-fill candidates-blk #'(lambda () init)))
 
 
 ;filter cells free from objs within distance
@@ -40,7 +40,7 @@
                       ,blck ,step ,count ,start
                       :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
                       :block-dim '(256 1 1))))
-        (clear-candidates candidates-blk)
+        (clear-candidates candidates-blk ,filter-count)
         ,@body
         (memcpy-device-to-host candidates-blk)
         (loop for i below 10000
