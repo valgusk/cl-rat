@@ -1,7 +1,7 @@
 (defun clear-candidates (candidates-blk &optional (init 1))
   (init-fill candidates-blk #'(lambda () init)))
 
-;;filter cells free from objs within distance
+;;set candidate value to val, so dat decrement could help satisfy max-dist
 (defkernel cu-reset-positive-to-val (void ((candidates int*) (val int)))
   (let* ((max-i (* 100 100))
          (i (+ (* block-dim-x block-idx-x) thread-idx-x)))
@@ -16,7 +16,7 @@
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
          (pos-i (- i (* obj-i 10000)))
-         (x (/ pos-i 100)) ;incorrect value??????????????????????????
+         (x (/ pos-i 100))
          (y (- pos-i (* 100 x))))
     (if (< i max-i)
       (let* ((obj-x (aref objs (+ obj-start (* obj-i obj-step))))
