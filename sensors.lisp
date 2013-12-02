@@ -19,9 +19,9 @@
 ;;start-deg and end-deg are boundary degrees relative to [x,y] vision
 ;;type is [x1, y1] object's type
 ;;active defines if [x1,y1] can be seen
-(defkernel update-sight (float ((rot float) (x float) (y float) (x1 float) (y1 float)
-                                (where float*) (start-off int) (start-deg float)
-                                (end-deg float) (type float) (active float)))
+(defkernel update-sight (void ((rot float) (x float) (y float) (x1 float) (y1 float)
+                               (where float*) (start-off int) (start-deg float)
+                               (end-deg float) (type float) (active float)))
   (let* ((stp 0.005) ;fatness of object = 0.005 * 2 = 1/100 of field
          ;;get angles object covers
          (a (get-obj-angle rot x y (- x1 stp) (- y1 stp)))
