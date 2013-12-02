@@ -3,8 +3,8 @@
 
 
 ;filter cells free from objs within distance
-(defkernel cu-free-from (void ((candidates int*) (min-dist float) (objs float*)
-                               (obj-step int) (obj-count int) (obj-start int)))
+(defkernel cu-free-from (void ((candidates int*) (min-dist float) (max-dist float)
+                               (objs float*) (obj-step int) (obj-count int) (obj-start int)))
   (let* ((max-i (* obj-count (* 100 100)))
          (i (+ (* block-dim-x block-idx-x) thread-idx-x))
          (obj-i (/ i 10000)) ;100x100 cells
@@ -18,8 +18,10 @@
              (obj-dist (fmaxf (fabsf (- (/ (to-float x) 100.0) obj-x))
                               (fabsf (- (/ (to-float y) 100.0) obj-y)))))
         (if (> obj-hp 0.0)
-          (if (> (- min-dist obj-dist) 0.0)
-            (set (aref candidates pos-i) 0)))))))
+          (if (< obj-dist min-dist)
+            (set (aref candidates pos-i) 0)
+            (if (> obj-dist max-dist)
+              (atomic-add (pointer (aref candidates pos-i)) -1))))))))
 
 ;;destructively picks n elements from lst
 (defun nrandom-pick (n lst &optional done &key (default (lambda ())))
@@ -34,9 +36,9 @@
 (defmacro with-position-filters (filter-count filter-datas &rest body)
   `(with-memory-block (candidates-blk 'int (* 100 100))
      (labels ,(loop for (filter-name count blck step start) in filter-datas collect
-                `(,filter-name (dist sign)
+                `(,filter-name (min-dist max-dist)
                     (cu-free-from
-                      candidates-blk dist
+                      candidates-blk min-dist max-dist
                       ,blck ,step ,count ,start
                       :grid-dim (list (ceiling (/ (* 100 100 ,count) 256)) 1 1)
                       :block-dim '(256 1 1))))
