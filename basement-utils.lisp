@@ -18,7 +18,9 @@
 (defun count-alive (blk count step start)
   (with-memory-block (count-blk 'int 1)
     (init-fill count-blk)
-    (cu-count-alive blk count step start count-blk)
+    (cu-count-alive blk count step start count-blk
+      :grid-dim (list (ceiling (/ (* 100 100 count) 256)) 1 1)
+      :block-dim '(256 1 1))
     (memcpy-device-to-host count-blk)
     (mem-aref count-blk 0)))
 
